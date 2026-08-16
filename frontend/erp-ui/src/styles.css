@@ -28,6 +28,7 @@ a{cursor:pointer;}
 .auth-card h2{font-size:20px; margin:0 0 5px;}
 .auth-card .sub{color:var(--text-soft); font-size:13px; margin:0 0 22px;}
 .auth-error{background:var(--danger-bg); color:var(--danger); font-size:12.5px; font-weight:600; padding:10px 14px; border-radius:8px; margin-bottom:16px;}
+.success-note{background:var(--success-bg); color:var(--success); font-size:12.5px; font-weight:600; padding:10px 14px; border-radius:8px;}
 .field{margin-bottom:15px;}
 .field label{display:block; font-size:12.5px; font-weight:600; color:var(--text-soft); margin-bottom:6px;}
 .field input, .field select{width:100%; padding:10px 12px; border:1.5px solid var(--line); border-radius:8px; font-family:inherit; font-size:14px; background:#fff; color:var(--text);}

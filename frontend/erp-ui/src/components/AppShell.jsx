@@ -20,6 +20,11 @@ export default function AppShell() {
         <NavLink to="/employees" className={({isActive}) => 'side-link' + (isActive ? ' active' : '')}>
           <span className="ic">◉</span> Employees
         </NavLink>
+        {(user?.role === 'Admin' || user?.role === 'SuperAdmin') && (
+          <NavLink to="/users" className={({isActive}) => 'side-link' + (isActive ? ' active' : '')}>
+            <span className="ic">◫</span> Users
+          </NavLink>
+        )}
         <div className="sidebar-bottom">
           Signed in as <b style={{color:'#fff'}}>{user?.role}</b>
           <button type="button" onClick={handleLogout}>← Log out</button>
