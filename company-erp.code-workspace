@@ -1,0 +1,10 @@
+{
+  "folders": [
+    { "name": "Backend (ErpApi)", "path": "backend/ErpApi" },
+    { "name": "Frontend (erp-ui)", "path": "frontend/erp-ui" },
+    { "name": "Database", "path": "database" }
+  ],
+  "settings": {
+    "npm.enableRunFromFolder": true
+  }
+}

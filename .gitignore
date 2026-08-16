@@ -1,0 +1,9 @@
+# .NET
+backend/ErpApi/bin/
+backend/ErpApi/obj/
+
+# Node
+frontend/erp-ui/node_modules/
+frontend/erp-ui/dist/
+
+.env.local
