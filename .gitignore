@@ -7,3 +7,4 @@ frontend/erp-ui/node_modules/
 frontend/erp-ui/dist/
 
 .env.local
+/backend/ErpApi/.vs
