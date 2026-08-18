@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext.jsx'
 export default function AppShell() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
+  const canManage = ['HR','Admin','SuperAdmin'].includes(user?.role)
 
   function handleLogout() {
     logout()
@@ -20,19 +21,23 @@ export default function AppShell() {
         <NavLink to="/employees" className={({isActive}) => 'side-link' + (isActive ? ' active' : '')}>
           <span className="ic">◉</span> Employees
         </NavLink>
-        {(user?.role === 'Admin' || user?.role === 'SuperAdmin') && (
-          <NavLink to="/users" className={({isActive}) => 'side-link' + (isActive ? ' active' : '')}>
-            <span className="ic">◫</span> Users
+        {canManage && <>
+          <NavLink to="/departments" className={({isActive}) => 'side-link' + (isActive ? ' active' : '')}>
+            <span className="ic">▤</span> Departments
           </NavLink>
-        )}
+          <NavLink to="/shifts" className={({isActive}) => 'side-link' + (isActive ? ' active' : '')}>
+            <span className="ic">◷</span> Shifts
+          </NavLink>
+          <NavLink to="/attendance" className={({isActive}) => 'side-link' + (isActive ? ' active' : '')}>
+            <span className="ic">✓</span> Daily Attendance
+          </NavLink>
+        </>}
         <div className="sidebar-bottom">
           Signed in as <b style={{color:'#fff'}}>{user?.role}</b>
           <button type="button" onClick={handleLogout}>← Log out</button>
         </div>
       </div>
-      <div className="main">
-        <Outlet />
-      </div>
+      <div className="main"><Outlet /></div>
     </div>
   )
 }

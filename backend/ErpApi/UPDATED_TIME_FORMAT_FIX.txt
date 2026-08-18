@@ -1,0 +1,21 @@
+UPDATED BACKEND - TIME FORMAT FIX
+=================================
+
+This backend contains the TimeOnly JSON converters needed so the React
+<input type="time"> values such as "09:30" are accepted by the ASP.NET API.
+
+Files added:
+- Converters/TimeOnlyJsonConverter.cs
+- Converters/NullableTimeOnlyJsonConverter.cs
+
+File updated:
+- Program.cs
+
+What to do after replacing your backend folder:
+1. Stop the currently running C# API.
+2. Replace the old backend/ErpApi folder with this updated ErpApi folder.
+3. Keep your own appsettings.json / User Secrets values if they differ.
+4. Start the C# API again.
+5. Open the React app and try saving the Shift again.
+
+No database migration is required for this fix.

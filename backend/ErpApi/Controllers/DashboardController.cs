@@ -17,7 +17,9 @@ public class DashboardController : ControllerBase
     [HttpGet("stats")]
     public async Task<ActionResult<DashboardStats>> Stats()
     {
-        var employees = await _db.Employees.Include(e => e.Department).Include(e => e.LocationRef).ToListAsync();
+        var employees = await _db.Employees
+            .Include(e => e.Department).Include(e => e.LocationRef).Include(e => e.Shift)
+            .ToListAsync();
 
         var total = employees.Count;
         var active = employees.Count(e => e.Status == "Active");
@@ -35,9 +37,28 @@ public class DashboardController : ControllerBase
             .Take(4)
             .Select(e => new EmployeeListItem(
                 e.EmployeeId, e.EmpCode, e.FullName, e.Designation,
-                e.Department?.DepartmentName, e.Type, e.Status, e.LocationRef?.LocationName))
+                e.Department?.DepartmentName, e.Type, e.Status, e.LocationRef?.LocationName,
+                e.RoleType, e.ShiftId, e.Shift?.ShiftName))
             .ToList();
 
-        return Ok(new DashboardStats(total, active, contract, byDept, recent));
+        var today = DateOnly.FromDateTime(DateTime.Now);
+        var attendance = await _db.AttendanceEntries
+            .Include(a => a.AttendanceStatus)
+            .Where(a => a.AttendanceDate == today)
+            .ToListAsync();
+
+        var todaySummary = new DashboardAttendance(
+            today.ToString("yyyy-MM-dd"),
+            attendance.Count(a => a.AttendanceStatus!.Status == "PRESENT"),
+            attendance.Count(a => a.AttendanceStatus!.Status == "ABSENT"),
+            attendance.Count(a => a.AttendanceStatus!.Status == "HALF_DAY"),
+            attendance.Count(a => a.AttendanceStatus!.Status == "PAID_LEAVE"),
+            attendance.Count(a => a.AttendanceStatus!.Status == "ON_DUTY"),
+            attendance.Count(a => !new[] { "PRESENT", "ABSENT", "HALF_DAY", "PAID_LEAVE", "ON_DUTY" }.Contains(a.AttendanceStatus!.Status)),
+            attendance.Count,
+            attendance.Sum(a => a.ActualWorkMinutes),
+            attendance.Sum(a => a.ApprovedOtMinutes));
+
+        return Ok(new DashboardStats(total, active, contract, byDept, recent, todaySummary));
     }
 }

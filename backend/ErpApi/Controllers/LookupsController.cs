@@ -21,4 +21,10 @@ public class LookupsController : ControllerBase
 
     [HttpGet("locations")]
     public async Task<IActionResult> Locations() => Ok(await _db.Locations.ToListAsync());
+
+    [HttpGet("shifts")]
+    public async Task<IActionResult> Shifts() => Ok(await _db.ShiftTemplates
+        .Where(s => s.Status == "Active")
+        .OrderBy(s => s.ShiftName)
+        .ToListAsync());
 }

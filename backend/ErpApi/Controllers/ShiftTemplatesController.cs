@@ -8,31 +8,94 @@ using Microsoft.EntityFrameworkCore;
 namespace ErpApi.Controllers;
 
 [ApiController]
-[Route("api/shift-templates")]
+[Route("api/shifts")]
 [Authorize]
-public class ShiftTemplatesController : ControllerBase
+public class ShiftsController : ControllerBase
 {
     private readonly AppDbContext _db;
-    public ShiftTemplatesController(AppDbContext db) => _db = db;
+    public ShiftsController(AppDbContext db) => _db = db;
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<ShiftTemplate>>> GetAll() =>
-        Ok(await _db.ShiftTemplates.ToListAsync());
+    public async Task<IActionResult> GetAll() =>
+        Ok(await _db.ShiftTemplates.OrderBy(s => s.ShiftName).ToListAsync());
 
     [HttpPost]
     [Authorize(Roles = "HR,Admin,SuperAdmin")]
-    public async Task<ActionResult<ShiftTemplate>> Create(ShiftTemplateRequest req)
+    public async Task<IActionResult> Create(ShiftTemplateRequest req)
     {
-        var shift = new ShiftTemplate
-        {
-            ShiftName = req.ShiftName, StartTime = req.StartTime, EndTime = req.EndTime, IsNextDay = req.IsNextDay,
-            Break1Start = req.Break1Start, Break1End = req.Break1End,
-            Break2Start = req.Break2Start, Break2End = req.Break2End,
-            LunchStart = req.LunchStart, LunchEnd = req.LunchEnd
-        };
+        var validation = Validate(req);
+        if (validation != null) return validation;
+        if (await _db.ShiftTemplates.AnyAsync(s => s.ShiftCode == req.ShiftCode.Trim()))
+            return Conflict(new { message = "Shift code already exists." });
+
+        var shift = Map(new ShiftTemplate(), req);
         _db.ShiftTemplates.Add(shift);
         await _db.SaveChangesAsync();
         return Ok(shift);
+    }
+
+    [HttpPut("{id:int}")]
+    [Authorize(Roles = "HR,Admin,SuperAdmin")]
+    public async Task<IActionResult> Update(int id, ShiftTemplateRequest req)
+    {
+        var shift = await _db.ShiftTemplates.FindAsync(id);
+        if (shift == null) return NotFound();
+        var validation = Validate(req);
+        if (validation != null) return validation;
+        if (await _db.ShiftTemplates.AnyAsync(s => s.ShiftCode == req.ShiftCode.Trim() && s.ShiftId != id))
+            return Conflict(new { message = "Shift code already exists." });
+
+        Map(shift, req);
+        await _db.SaveChangesAsync();
+        return Ok(shift);
+    }
+
+    [HttpDelete("{id:int}")]
+    [Authorize(Roles = "Admin,SuperAdmin")]
+    public async Task<IActionResult> Delete(int id)
+    {
+        var shift = await _db.ShiftTemplates.FindAsync(id);
+        if (shift == null) return NotFound();
+        if (await _db.Employees.AnyAsync(e => e.ShiftId == id) ||
+            await _db.AttendanceEntries.AnyAsync(a => a.ShiftId == id))
+            return Conflict(new { message = "This shift is in use and cannot be deleted. Mark it Inactive instead." });
+
+        _db.ShiftTemplates.Remove(shift);
+        await _db.SaveChangesAsync();
+        return NoContent();
+    }
+
+    private static ActionResult? Validate(ShiftTemplateRequest req)
+    {
+        if (string.IsNullOrWhiteSpace(req.ShiftCode) || string.IsNullOrWhiteSpace(req.ShiftName))
+            return new BadRequestObjectResult(new { message = "Shift code and shift name are required." });
+        if (req.FullDayMinutes <= 0 || req.MinimumWorkMinutes < 0 || req.HalfDayMinutes < 0)
+            return new BadRequestObjectResult(new { message = "Work-minute thresholds must be valid." });
+        if (req.OtStartAfterMinutes < 0)
+            return new BadRequestObjectResult(new { message = "OT start-after minutes cannot be negative." });
+        return null;
+    }
+
+    private static ShiftTemplate Map(ShiftTemplate s, ShiftTemplateRequest r)
+    {
+        s.ShiftCode = r.ShiftCode.Trim();
+        s.ShiftName = r.ShiftName.Trim();
+        s.StartTime = r.StartTime;
+        s.EndTime = r.EndTime;
+        s.LunchStartTime = r.LunchStartTime;
+        s.LunchEndTime = r.LunchEndTime;
+        s.GraceInMinutes = r.GraceInMinutes;
+        s.GraceOutMinutes = r.GraceOutMinutes;
+        s.LateAfterMinutes = r.LateAfterMinutes;
+        s.EarlyOutMinutes = r.EarlyOutMinutes;
+        s.MinimumWorkMinutes = r.MinimumWorkMinutes;
+        s.HalfDayMinutes = r.HalfDayMinutes;
+        s.FullDayMinutes = r.FullDayMinutes;
+        s.OtAllowed = r.OtAllowed;
+        s.OtStartAfterMinutes = r.OtStartAfterMinutes;
+        s.IsNightShift = r.IsNightShift;
+        s.Status = r.Status;
+        return s;
     }
 }
 

@@ -6,7 +6,7 @@ import Topbar from '../components/Topbar.jsx'
 const emptyForm = {
   empCode: '', type: 'Regular', fullName: '', designation: '', departmentId: '', companyId: '', managerId: '',
   dateOfJoining: '', dateOfBirth: '', dateOfLeaving: '', leavingComments: '',
-  locationId: '', email: '', phoneNumber: '', maritalStatus: ''
+  locationId: '', email: '', phoneNumber: '', maritalStatus: '', roleType: 'User', shiftId: ''
 }
 
 export default function EmployeeProfile({ mode }) {
@@ -17,8 +17,6 @@ export default function EmployeeProfile({ mode }) {
   const [lookups, setLookups] = useState({ companies: [], departments: [], locations: [] })
   const [managerOptions, setManagerOptions] = useState([])
   const [shiftTemplates, setShiftTemplates] = useState([])
-  const [selectedShiftId, setSelectedShiftId] = useState('')
-  const [currentAssignment, setCurrentAssignment] = useState(null)
   const [bank, setBank] = useState({ bankName:'', accountNumber:'', ifscCode:'', branchName:'', esiNumber:'', panNumber:'' })
   const [proofs, setProofs] = useState([])
   const [newProof, setNewProof] = useState({ proofType:'Aadhaar', proofNumber:'' })
@@ -33,7 +31,7 @@ export default function EmployeeProfile({ mode }) {
     api.get('/lookups/departments').then(r => setLookups(l => ({...l, departments: r.data})))
     api.get('/lookups/locations').then(r => setLookups(l => ({...l, locations: r.data})))
     api.get('/employees').then(r => setManagerOptions(r.data.filter(e => String(e.employeeId) !== id)))
-    api.get('/shift-templates').then(r => setShiftTemplates(r.data))
+    api.get('/shifts').then(r => setShiftTemplates(r.data))
   }, [])
 
   useEffect(() => {
@@ -44,6 +42,7 @@ export default function EmployeeProfile({ mode }) {
           empCode: e.empCode,
           type: e.type, fullName: e.fullName, designation: e.designation || '',
           departmentId: e.departmentId || '', companyId: e.companyId || '', managerId: e.managerId || '',
+          shiftId: e.shiftId || '', roleType: e.roleType || 'User',
           dateOfJoining: e.dateOfJoining || '', dateOfBirth: e.dateOfBirth || '', dateOfLeaving: e.dateOfLeaving || '',
           leavingComments: e.leavingComments || '', locationId: e.locationId || '',
           email: e.email || '', phoneNumber: e.phoneNumber || '', maritalStatus: e.maritalStatus || ''
@@ -55,24 +54,8 @@ export default function EmployeeProfile({ mode }) {
         ;(e.addresses || []).forEach(ad => { a[ad.addressType] = ad })
         setAddresses(a)
       }).catch(() => setError('Could not load this employee.'))
-      api.get(`/employees/${id}/shift-assignment`).then(res => {
-        if (res.data) {
-          setCurrentAssignment(res.data)
-          setSelectedShiftId(String(res.data.shiftId))
-        }
-      }).catch(() => setCurrentAssignment(null))
     }
   }, [mode, id])
-
-  async function assignShift() {
-    if (!selectedShiftId || mode !== 'edit') return
-    await api.post(`/employees/${id}/shift-assignment`, {
-      shiftId: parseInt(selectedShiftId, 10),
-      effectiveFrom: new Date().toISOString().slice(0, 10)
-    })
-    const res = await api.get(`/employees/${id}/shift-assignment`)
-    setCurrentAssignment(res.data)
-  }
 
   function set(field, value) { setForm(f => ({ ...f, [field]: value })) }
 
@@ -87,6 +70,8 @@ export default function EmployeeProfile({ mode }) {
       companyId: toIntOrNull(form.companyId),
       managerId: toIntOrNull(form.managerId),
       locationId: toIntOrNull(form.locationId),
+      shiftId: toIntOrNull(form.shiftId),
+      roleType: form.roleType || 'User',
       dateOfJoining: form.dateOfJoining || null,
       dateOfBirth: form.dateOfBirth || null,
       dateOfLeaving: form.dateOfLeaving || null,
@@ -144,7 +129,7 @@ export default function EmployeeProfile({ mode }) {
       <div className="page-head">
         <div>
           <h1>{mode === 'add' ? 'Add Employee' : 'Edit Employee'}</h1>
-          <p>Core details, banking, compliance documents, address and shift assignment.</p>
+          <p>Core details, role, department, shift, banking, compliance documents and address.</p>
         </div>
       </div>
 
@@ -170,9 +155,9 @@ export default function EmployeeProfile({ mode }) {
 
         <div className="panel">
           <div className="tabs">
-            {['basic','bank','proof','address','education','shift'].map(t => (
+            {['basic','bank','proof','address','education'].map(t => (
               <button key={t} type="button" className={'tab-btn' + (tab===t ? ' active' : '')} onClick={() => setTab(t)}>
-                {{basic:'Basic Details', bank:'Bank Details', proof:'Proof / Documents', address:'Address', education:'Education', shift:'Employment / Shift'}[t]}
+                {{basic:'Basic Details', bank:'Bank Details', proof:'Proof / Documents', address:'Address', education:'Education'}[t]}
               </button>
             ))}
           </div>
@@ -205,6 +190,18 @@ export default function EmployeeProfile({ mode }) {
                   <select value={form.managerId} onChange={e => set('managerId', e.target.value)}>
                     <option value="">— None —</option>
                     {managerOptions.map(m => <option key={m.employeeId} value={m.employeeId}>{m.fullName}{m.designation ? ` — ${m.designation}` : ''}</option>)}
+                  </select>
+                </div>
+
+                <div className="field"><label>Role Type</label>
+                  <select value={form.roleType} onChange={e => set('roleType', e.target.value)}>
+                    <option>User</option><option>HR</option><option>Admin</option><option>SuperAdmin</option>
+                  </select>
+                </div>
+                <div className="field"><label>Shift</label>
+                  <select value={form.shiftId} onChange={e => set('shiftId', e.target.value)}>
+                    <option value="">Select shift…</option>
+                    {shiftTemplates.filter(s => s.status === 'Active').map(s => <option key={s.shiftId} value={s.shiftId}>{s.shiftName} — {s.shiftCode}</option>)}
                   </select>
                 </div>
 
@@ -342,56 +339,6 @@ export default function EmployeeProfile({ mode }) {
                 </div>
               ) : (
                 <p style={{fontSize:12.5,color:'var(--text-faint)'}}>Save the employee first, then add qualifications.</p>
-              )}
-            </div>
-          )}
-
-          {tab === 'shift' && (
-            <div className="tab-content active">
-              {mode === 'edit' ? (
-                <>
-                  <div className="field" style={{maxWidth: 340, marginBottom: 10}}>
-                    <label>Assign Shift</label>
-                    <select value={selectedShiftId} onChange={e => setSelectedShiftId(e.target.value)}>
-                      <option value="">Select a shift template…</option>
-                      {shiftTemplates.map(s => <option key={s.shiftId} value={s.shiftId}>{s.shiftName}</option>)}
-                    </select>
-                  </div>
-                  <button type="button" className="add-row-btn" onClick={assignShift} style={{marginBottom: 22}}>
-                    Assign Selected Shift
-                  </button>
-
-                  {currentAssignment && (
-                    <p style={{fontSize:12.5, color:'var(--text-faint)', marginBottom:18}}>
-                      Currently assigned: <b style={{color:'var(--blue-700)'}}>{currentAssignment.shift?.shiftName}</b>
-                      {' '}(effective {currentAssignment.effectiveFrom})
-                    </p>
-                  )}
-
-                  {shiftTemplates.map(s => (
-                    <div className="shift-card" key={s.shiftId} style={{opacity: currentAssignment?.shiftId === s.shiftId ? 1 : .55}}>
-                      <div className="shift-card-head">
-                        <strong style={{fontSize:15, color:'var(--blue-900)'}}>{s.shiftName}</strong>
-                        <div className="toggle-yn">Ends next day <span className={'toggle' + (s.isNextDay ? ' on' : '')}></span></div>
-                      </div>
-                      <div className="time-strip">
-                        <div className="time-block"><label>Start</label><input value={(s.startTime || '').slice(0,5)} disabled /></div>
-                        <div className="time-block"><label>End</label><input value={(s.endTime || '').slice(0,5)} disabled /></div>
-                        <div className="time-arrow">·</div>
-                        <div className="time-block"><label>Break 1 start</label><input value={(s.break1Start || '—').slice(0,5)} disabled /></div>
-                        <div className="time-block"><label>Break 1 end</label><input value={(s.break1End || '—').slice(0,5)} disabled /></div>
-                        <div className="time-arrow">·</div>
-                        <div className="time-block"><label>Break 2 start</label><input value={(s.break2Start || '—').slice(0,5)} disabled /></div>
-                        <div className="time-block"><label>Break 2 end</label><input value={(s.break2End || '—').slice(0,5)} disabled /></div>
-                        <div className="time-arrow">·</div>
-                        <div className="time-block"><label>Lunch start</label><input value={(s.lunchStart || '—').slice(0,5)} disabled /></div>
-                        <div className="time-block"><label>Lunch end</label><input value={(s.lunchEnd || '—').slice(0,5)} disabled /></div>
-                      </div>
-                    </div>
-                  ))}
-                </>
-              ) : (
-                <p style={{fontSize:12.5,color:'var(--text-faint)'}}>Save the employee first, then assign a shift.</p>
               )}
             </div>
           )}

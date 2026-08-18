@@ -18,6 +18,9 @@ public class AppDbContext : DbContext
     public DbSet<EmployeeEducation> EmployeeEducations => Set<EmployeeEducation>();
     public DbSet<ShiftTemplate> ShiftTemplates => Set<ShiftTemplate>();
     public DbSet<EmployeeShiftAssignment> ShiftAssignments => Set<EmployeeShiftAssignment>();
+    public DbSet<AttendanceStatus> AttendanceStatuses => Set<AttendanceStatus>();
+    public DbSet<OtRoundingRule> OtRoundingRules => Set<OtRoundingRule>();
+    public DbSet<AttendanceEntry> AttendanceEntries => Set<AttendanceEntry>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -60,6 +63,10 @@ public class AppDbContext : DbContext
             e.HasKey(x => x.DepartmentId);
             e.Property(x => x.DepartmentId).HasColumnName("department_id");
             e.Property(x => x.DepartmentName).HasColumnName("department_name");
+            e.Property(x => x.OtAllowed).HasColumnName("ot_allowed");
+            e.Property(x => x.MinOtMinutes).HasColumnName("min_ot_minutes");
+            e.Property(x => x.MaxOtMinutes).HasColumnName("max_ot_minutes");
+            e.Property(x => x.RequiredWorkMinutes).HasColumnName("required_work_minutes");
         });
 
         modelBuilder.Entity<Employee>(e =>
@@ -74,6 +81,8 @@ public class AppDbContext : DbContext
             e.Property(x => x.DepartmentId).HasColumnName("department_id");
             e.Property(x => x.CompanyId).HasColumnName("company_id");
             e.Property(x => x.ManagerId).HasColumnName("manager_id");
+            e.Property(x => x.ShiftId).HasColumnName("shift_id");
+            e.Property(x => x.RoleType).HasColumnName("role_type");
             e.Property(x => x.DateOfJoining).HasColumnName("date_of_joining");
             e.Property(x => x.DateOfBirth).HasColumnName("date_of_birth");
             e.Property(x => x.DateOfLeaving).HasColumnName("date_of_leaving");
@@ -92,6 +101,7 @@ public class AppDbContext : DbContext
             e.HasOne(x => x.Company).WithMany().HasForeignKey(x => x.CompanyId);
             e.HasOne(x => x.LocationRef).WithMany().HasForeignKey(x => x.LocationId);
             e.HasOne(x => x.Manager).WithMany().HasForeignKey(x => x.ManagerId);
+            e.HasOne(x => x.Shift).WithMany().HasForeignKey(x => x.ShiftId);
         });
 
         modelBuilder.Entity<BankDetail>(e =>
@@ -155,16 +165,24 @@ public class AppDbContext : DbContext
             e.ToTable("shift_templates");
             e.HasKey(x => x.ShiftId);
             e.Property(x => x.ShiftId).HasColumnName("shift_id");
+            e.Property(x => x.ShiftCode).HasColumnName("shift_code");
             e.Property(x => x.ShiftName).HasColumnName("shift_name");
-            e.Property(x => x.StartTime).HasColumnName("start_time");
-            e.Property(x => x.EndTime).HasColumnName("end_time");
-            e.Property(x => x.IsNextDay).HasColumnName("is_next_day");
-            e.Property(x => x.Break1Start).HasColumnName("break1_start");
-            e.Property(x => x.Break1End).HasColumnName("break1_end");
-            e.Property(x => x.Break2Start).HasColumnName("break2_start");
-            e.Property(x => x.Break2End).HasColumnName("break2_end");
-            e.Property(x => x.LunchStart).HasColumnName("lunch_start");
-            e.Property(x => x.LunchEnd).HasColumnName("lunch_end");
+            e.Property(x => x.StartTime).HasColumnName("shift_start_time");
+            e.Property(x => x.EndTime).HasColumnName("shift_end_time");
+            e.Property(x => x.LunchStartTime).HasColumnName("lunch_start_time");
+            e.Property(x => x.LunchEndTime).HasColumnName("lunch_end_time");
+            e.Property(x => x.GraceInMinutes).HasColumnName("grace_in_minutes");
+            e.Property(x => x.GraceOutMinutes).HasColumnName("grace_out_minutes");
+            e.Property(x => x.LateAfterMinutes).HasColumnName("late_after_minutes");
+            e.Property(x => x.EarlyOutMinutes).HasColumnName("early_out_minutes");
+            e.Property(x => x.MinimumWorkMinutes).HasColumnName("minimum_work_minutes");
+            e.Property(x => x.HalfDayMinutes).HasColumnName("half_day_minutes");
+            e.Property(x => x.FullDayMinutes).HasColumnName("full_day_minutes");
+            e.Property(x => x.OtAllowed).HasColumnName("ot_allowed");
+            e.Property(x => x.OtStartAfterMinutes).HasColumnName("ot_start_after_minutes");
+            e.Property(x => x.IsNightShift).HasColumnName("is_night_shift");
+            e.Property(x => x.Status).HasColumnName("status");
+            e.HasIndex(x => x.ShiftCode).IsUnique();
         });
 
         modelBuilder.Entity<EmployeeShiftAssignment>(e =>
@@ -177,6 +195,65 @@ public class AppDbContext : DbContext
             e.Property(x => x.EffectiveFrom).HasColumnName("effective_from");
             e.HasOne(x => x.Employee).WithMany(x => x.ShiftAssignments).HasForeignKey(x => x.EmployeeId);
             e.HasOne(x => x.Shift).WithMany().HasForeignKey(x => x.ShiftId);
+        });
+
+
+        modelBuilder.Entity<AttendanceStatus>(e =>
+        {
+            e.ToTable("attendance_statuses");
+            e.HasKey(x => x.AttendanceStatusId);
+            e.Property(x => x.AttendanceStatusId).HasColumnName("attendance_status_id");
+            e.Property(x => x.Status).HasColumnName("status");
+            e.Property(x => x.AttendanceUnits).HasColumnName("attendance_units").HasPrecision(5, 2);
+            e.Property(x => x.Meaning).HasColumnName("meaning");
+            e.Property(x => x.IsActive).HasColumnName("is_active");
+            e.HasIndex(x => x.Status).IsUnique();
+        });
+
+        modelBuilder.Entity<OtRoundingRule>(e =>
+        {
+            e.ToTable("ot_rounding_rules");
+            e.HasKey(x => x.OtRoundingRuleId);
+            e.Property(x => x.OtRoundingRuleId).HasColumnName("ot_rounding_rule_id");
+            e.Property(x => x.FromMinutes).HasColumnName("from_minutes");
+            e.Property(x => x.ToMinutes).HasColumnName("to_minutes");
+            e.Property(x => x.RoundedMinutes).HasColumnName("rounded_minutes");
+            e.Property(x => x.IsActive).HasColumnName("is_active");
+        });
+
+        modelBuilder.Entity<AttendanceEntry>(e =>
+        {
+            e.ToTable("attendance_entries");
+            e.HasKey(x => x.AttendanceId);
+            e.Property(x => x.AttendanceId).HasColumnName("attendance_id");
+            e.Property(x => x.EmployeeId).HasColumnName("employee_id");
+            e.Property(x => x.AttendanceDate).HasColumnName("attendance_date");
+            e.Property(x => x.ShiftId).HasColumnName("shift_id");
+            e.Property(x => x.AttendanceStatusId).HasColumnName("attendance_status_id");
+            e.Property(x => x.EntryType).HasColumnName("entry_type");
+            e.Property(x => x.In1).HasColumnName("in1");
+            e.Property(x => x.Out1).HasColumnName("out1");
+            e.Property(x => x.In2).HasColumnName("in2");
+            e.Property(x => x.Out2).HasColumnName("out2");
+            e.Property(x => x.In3).HasColumnName("in3");
+            e.Property(x => x.Out3).HasColumnName("out3");
+            e.Property(x => x.In4).HasColumnName("in4");
+            e.Property(x => x.Out4).HasColumnName("out4");
+            e.Property(x => x.In5).HasColumnName("in5");
+            e.Property(x => x.Out5).HasColumnName("out5");
+            e.Property(x => x.ActualWorkMinutes).HasColumnName("actual_work_minutes");
+            e.Property(x => x.RequiredWorkMinutes).HasColumnName("required_work_minutes");
+            e.Property(x => x.CalculatedOtMinutes).HasColumnName("calculated_ot_minutes");
+            e.Property(x => x.RoundedOtMinutes).HasColumnName("rounded_ot_minutes");
+            e.Property(x => x.ApprovedOtMinutes).HasColumnName("approved_ot_minutes");
+            e.Property(x => x.Reason).HasColumnName("reason");
+            e.Property(x => x.CreatedByUserId).HasColumnName("created_by_user_id");
+            e.Property(x => x.CreatedAt).HasColumnName("created_at");
+            e.Property(x => x.UpdatedAt).HasColumnName("updated_at");
+            e.HasIndex(x => new { x.EmployeeId, x.AttendanceDate }).IsUnique();
+            e.HasOne(x => x.Employee).WithMany().HasForeignKey(x => x.EmployeeId);
+            e.HasOne(x => x.Shift).WithMany().HasForeignKey(x => x.ShiftId);
+            e.HasOne(x => x.AttendanceStatus).WithMany().HasForeignKey(x => x.AttendanceStatusId);
         });
     }
 }

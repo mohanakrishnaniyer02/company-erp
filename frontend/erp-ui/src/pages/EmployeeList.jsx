@@ -52,11 +52,11 @@ export default function EmployeeList() {
         <div className="table-scroll">
           <table className="emp-table">
             <thead>
-              <tr><th>Employee</th><th>Designation</th><th>Department</th><th>Type</th><th>Status</th><th>Location</th><th></th></tr>
+              <tr><th>Employee</th><th>Designation</th><th>Department</th><th>Shift</th><th>Role</th><th>Type</th><th>Status</th><th>Location</th><th></th></tr>
             </thead>
             <tbody>
               {employees.length === 0 ? (
-                <tr className="empty-row"><td colSpan="7">No employees match this filter.</td></tr>
+                <tr className="empty-row"><td colSpan="9">No employees match this filter.</td></tr>
               ) : employees.map(e => (
                 <tr key={e.employeeId}>
                   <td>
@@ -70,6 +70,8 @@ export default function EmployeeList() {
                   </td>
                   <td>{e.designation}</td>
                   <td>{e.department}</td>
+                  <td>{e.shiftName || '—'}</td>
+                  <td><span className="badge regular">{e.roleType}</span></td>
                   <td><span className={'badge ' + e.type.toLowerCase()}>{e.type}</span></td>
                   <td><span className={'badge ' + e.status.toLowerCase()}>{e.status}</span></td>
                   <td>{e.location}</td>

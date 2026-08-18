@@ -20,7 +20,7 @@ public class EmployeesController : ControllerBase
     public async Task<ActionResult<IEnumerable<EmployeeListItem>>> GetAll(
         [FromQuery] string? search, [FromQuery] string? type, [FromQuery] int? departmentId)
     {
-        var query = _db.Employees.Include(e => e.Department).Include(e => e.LocationRef).AsQueryable();
+        var query = _db.Employees.Include(e => e.Department).Include(e => e.LocationRef).Include(e => e.Shift).AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(search))
             query = query.Where(e => e.FullName.ToLower().Contains(search.ToLower())
@@ -35,7 +35,8 @@ public class EmployeesController : ControllerBase
             .Select(e => new EmployeeListItem(
                 e.EmployeeId, e.EmpCode, e.FullName, e.Designation,
                 e.Department != null ? e.Department.DepartmentName : null,
-                e.Type, e.Status, e.LocationRef != null ? e.LocationRef.LocationName : null))
+                e.Type, e.Status, e.LocationRef != null ? e.LocationRef.LocationName : null,
+                e.RoleType, e.ShiftId, e.Shift != null ? e.Shift.ShiftName : null))
             .ToListAsync();
 
         return Ok(result);
@@ -46,7 +47,7 @@ public class EmployeesController : ControllerBase
     public async Task<ActionResult<Employee>> GetById(int id)
     {
         var emp = await _db.Employees
-            .Include(e => e.Department).Include(e => e.Company).Include(e => e.LocationRef).Include(e => e.Manager)
+            .Include(e => e.Department).Include(e => e.Company).Include(e => e.LocationRef).Include(e => e.Manager).Include(e => e.Shift)
             .Include(e => e.BankDetail)
             .Include(e => e.ProofDocuments)
             .Include(e => e.Addresses)
@@ -79,6 +80,8 @@ public class EmployeesController : ControllerBase
             DepartmentId = req.DepartmentId,
             CompanyId = req.CompanyId,
             ManagerId = req.ManagerId,
+            ShiftId = req.ShiftId,
+            RoleType = string.IsNullOrWhiteSpace(req.RoleType) ? "User" : req.RoleType!,
             DateOfJoining = req.DateOfJoining,
             DateOfBirth = req.DateOfBirth,
             DateOfLeaving = req.DateOfLeaving,
@@ -109,6 +112,8 @@ public class EmployeesController : ControllerBase
         emp.DepartmentId = req.DepartmentId;
         emp.CompanyId = req.CompanyId;
         emp.ManagerId = req.ManagerId;
+        emp.ShiftId = req.ShiftId;
+        emp.RoleType = string.IsNullOrWhiteSpace(req.RoleType) ? "User" : req.RoleType!;
         emp.DateOfJoining = req.DateOfJoining;
         emp.DateOfBirth = req.DateOfBirth;
         emp.DateOfLeaving = req.DateOfLeaving;

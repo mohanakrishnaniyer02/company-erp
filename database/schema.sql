@@ -1,7 +1,10 @@
 -- ============================================================
--- Company HR / ERP  —  PostgreSQL schema
+-- Company HR / ERP — PostgreSQL schema
 -- ============================================================
 
+DROP TABLE IF EXISTS attendance_entries CASCADE;
+DROP TABLE IF EXISTS ot_rounding_rules CASCADE;
+DROP TABLE IF EXISTS attendance_statuses CASCADE;
 DROP TABLE IF EXISTS employee_shift_assignment CASCADE;
 DROP TABLE IF EXISTS shift_templates CASCADE;
 DROP TABLE IF EXISTS employee_education CASCADE;
@@ -14,24 +17,22 @@ DROP TABLE IF EXISTS locations CASCADE;
 DROP TABLE IF EXISTS companies CASCADE;
 DROP TABLE IF EXISTS users CASCADE;
 
--- ---------------- Auth ----------------
 CREATE TABLE users (
     user_id        SERIAL PRIMARY KEY,
     full_name      VARCHAR(150) NOT NULL,
     email          VARCHAR(150) NOT NULL UNIQUE,
     password_hash  VARCHAR(255) NOT NULL,
-    role           VARCHAR(20)  NOT NULL DEFAULT 'User'
+    role           VARCHAR(20) NOT NULL DEFAULT 'User'
                    CHECK (role IN ('User','HR','Admin','SuperAdmin')),
-    jwt_token      TEXT,                       -- last-issued token, per spec (no refresh flow)
+    jwt_token      TEXT,
     is_active      BOOLEAN NOT NULL DEFAULT TRUE,
     created_at     TIMESTAMP NOT NULL DEFAULT now()
 );
 
--- ---------------- Lookups ----------------
 CREATE TABLE companies (
     company_id        SERIAL PRIMARY KEY,
     company_name      VARCHAR(150) NOT NULL,
-    is_sub_company     BOOLEAN NOT NULL DEFAULT FALSE,
+    is_sub_company    BOOLEAN NOT NULL DEFAULT FALSE,
     parent_company_id INT REFERENCES companies(company_id)
 );
 
@@ -41,21 +42,50 @@ CREATE TABLE locations (
 );
 
 CREATE TABLE departments (
-    department_id   SERIAL PRIMARY KEY,
-    department_name VARCHAR(100) NOT NULL UNIQUE
+    department_id       SERIAL PRIMARY KEY,
+    department_name     VARCHAR(100) NOT NULL UNIQUE,
+    ot_allowed          BOOLEAN NOT NULL DEFAULT FALSE,
+    min_ot_minutes      INT,
+    max_ot_minutes      INT,
+    required_work_minutes INT NOT NULL DEFAULT 480 CHECK (required_work_minutes > 0),
+    CHECK (NOT ot_allowed OR (min_ot_minutes IS NOT NULL AND max_ot_minutes IS NOT NULL AND min_ot_minutes <= max_ot_minutes))
 );
 
--- ---------------- Core employee ----------------
+CREATE TABLE shift_templates (
+    shift_id                SERIAL PRIMARY KEY,
+    shift_code              VARCHAR(30) NOT NULL UNIQUE,
+    shift_name              VARCHAR(100) NOT NULL,
+    shift_start_time        TIME NOT NULL,
+    shift_end_time          TIME NOT NULL,
+    lunch_start_time        TIME,
+    lunch_end_time          TIME,
+    grace_in_minutes        INT NOT NULL DEFAULT 0,
+    grace_out_minutes       INT NOT NULL DEFAULT 0,
+    late_after_minutes      INT NOT NULL DEFAULT 0,
+    early_out_minutes       INT NOT NULL DEFAULT 0,
+    minimum_work_minutes    INT NOT NULL DEFAULT 0,
+    half_day_minutes        INT NOT NULL DEFAULT 240,
+    full_day_minutes        INT NOT NULL DEFAULT 480,
+    ot_allowed              BOOLEAN NOT NULL DEFAULT TRUE,
+    ot_start_after_minutes  INT NOT NULL DEFAULT 0,
+    is_night_shift          BOOLEAN NOT NULL DEFAULT FALSE,
+    status                  VARCHAR(20) NOT NULL DEFAULT 'Active'
+                            CHECK (status IN ('Active','Inactive'))
+);
+
 CREATE TABLE employees (
     employee_id       SERIAL PRIMARY KEY,
-    emp_code          VARCHAR(30)  NOT NULL UNIQUE,      -- e.g. EMP-2026-0143
-    type              VARCHAR(20)  NOT NULL DEFAULT 'Regular'
+    emp_code          VARCHAR(30) NOT NULL UNIQUE,
+    type              VARCHAR(20) NOT NULL DEFAULT 'Regular'
                       CHECK (type IN ('Regular','Contract')),
     full_name         VARCHAR(150) NOT NULL,
     designation       VARCHAR(150),
     department_id     INT REFERENCES departments(department_id),
     company_id        INT REFERENCES companies(company_id),
     manager_id        INT REFERENCES employees(employee_id),
+    shift_id          INT REFERENCES shift_templates(shift_id),
+    role_type         VARCHAR(20) NOT NULL DEFAULT 'User'
+                      CHECK (role_type IN ('User','HR','Admin','SuperAdmin')),
     date_of_joining   DATE,
     date_of_birth     DATE,
     date_of_leaving   DATE,
@@ -73,7 +103,6 @@ CREATE TABLE employees (
 CREATE INDEX idx_employees_name ON employees (full_name);
 CREATE INDEX idx_employees_dept ON employees (department_id);
 
--- ---------------- Sub pages (1-to-many off employees) ----------------
 CREATE TABLE employee_bank_details (
     bank_detail_id  SERIAL PRIMARY KEY,
     employee_id     INT NOT NULL REFERENCES employees(employee_id) ON DELETE CASCADE,
@@ -83,26 +112,26 @@ CREATE TABLE employee_bank_details (
     branch_name     VARCHAR(150),
     esi_number      VARCHAR(30),
     pan_number      VARCHAR(20),
-    UNIQUE(employee_id)          -- one primary bank record per employee
+    UNIQUE(employee_id)
 );
 
 CREATE TABLE employee_proof (
     proof_id        SERIAL PRIMARY KEY,
     employee_id     INT NOT NULL REFERENCES employees(employee_id) ON DELETE CASCADE,
-    proof_type      VARCHAR(50) NOT NULL,        -- Aadhaar / PAN / Passport / Driving Licence
+    proof_type      VARCHAR(50) NOT NULL,
     proof_number    VARCHAR(50) NOT NULL,
     attachment_url  TEXT
 );
 
 CREATE TABLE employee_address (
-    address_id                SERIAL PRIMARY KEY,
-    employee_id                INT NOT NULL REFERENCES employees(employee_id) ON DELETE CASCADE,
-    address_type               VARCHAR(20) NOT NULL CHECK (address_type IN ('Current','Permanent')),
-    address_line1               VARCHAR(200),
-    address_line2               VARCHAR(200),
-    address_line3               VARCHAR(200),
-    emergency_person            VARCHAR(150),
-    emergency_contact_number    VARCHAR(20),
+    address_id               SERIAL PRIMARY KEY,
+    employee_id              INT NOT NULL REFERENCES employees(employee_id) ON DELETE CASCADE,
+    address_type             VARCHAR(20) NOT NULL CHECK (address_type IN ('Current','Permanent')),
+    address_line1            VARCHAR(200),
+    address_line2            VARCHAR(200),
+    address_line3            VARCHAR(200),
+    emergency_person         VARCHAR(150),
+    emergency_contact_number VARCHAR(20),
     UNIQUE(employee_id, address_type)
 );
 
@@ -114,21 +143,6 @@ CREATE TABLE employee_education (
     completion_date   DATE
 );
 
--- ---------------- Shift templates (reusable, then assigned) ----------------
-CREATE TABLE shift_templates (
-    shift_id      SERIAL PRIMARY KEY,
-    shift_name    VARCHAR(100) NOT NULL,       -- e.g. "Day Shift"
-    start_time    TIME NOT NULL,
-    end_time      TIME NOT NULL,
-    is_next_day   BOOLEAN NOT NULL DEFAULT FALSE,
-    break1_start  TIME,
-    break1_end    TIME,
-    break2_start  TIME,
-    break2_end    TIME,
-    lunch_start   TIME,
-    lunch_end     TIME
-);
-
 CREATE TABLE employee_shift_assignment (
     assignment_id   SERIAL PRIMARY KEY,
     employee_id     INT NOT NULL REFERENCES employees(employee_id) ON DELETE CASCADE,
@@ -137,35 +151,96 @@ CREATE TABLE employee_shift_assignment (
     UNIQUE(employee_id, effective_from)
 );
 
--- ============================================================
--- Seed data
--- ============================================================
+CREATE TABLE attendance_statuses (
+    attendance_status_id SERIAL PRIMARY KEY,
+    status               VARCHAR(30) NOT NULL UNIQUE,
+    attendance_units     NUMERIC(5,2) NOT NULL DEFAULT 0,
+    meaning              VARCHAR(150) NOT NULL,
+    is_active            BOOLEAN NOT NULL DEFAULT TRUE
+);
+
+CREATE TABLE ot_rounding_rules (
+    ot_rounding_rule_id SERIAL PRIMARY KEY,
+    from_minutes        INT NOT NULL CHECK (from_minutes >= 0),
+    to_minutes          INT NOT NULL CHECK (to_minutes >= from_minutes),
+    rounded_minutes     INT NOT NULL CHECK (rounded_minutes >= 0),
+    is_active            BOOLEAN NOT NULL DEFAULT TRUE
+);
+
+CREATE TABLE attendance_entries (
+    attendance_id         SERIAL PRIMARY KEY,
+    employee_id           INT NOT NULL REFERENCES employees(employee_id),
+    attendance_date       DATE NOT NULL,
+    shift_id              INT NOT NULL REFERENCES shift_templates(shift_id),
+    attendance_status_id  INT NOT NULL REFERENCES attendance_statuses(attendance_status_id),
+    entry_type             VARCHAR(20) NOT NULL DEFAULT 'User'
+                           CHECK (entry_type IN ('User','Biometric')),
+    in1 TIME, out1 TIME,
+    in2 TIME, out2 TIME,
+    in3 TIME, out3 TIME,
+    in4 TIME, out4 TIME,
+    in5 TIME, out5 TIME,
+    actual_work_minutes   INT NOT NULL DEFAULT 0,
+    required_work_minutes INT NOT NULL DEFAULT 0,
+    calculated_ot_minutes INT NOT NULL DEFAULT 0,
+    rounded_ot_minutes    INT NOT NULL DEFAULT 0,
+    approved_ot_minutes   INT NOT NULL DEFAULT 0,
+    reason                TEXT,
+    created_by_user_id    INT REFERENCES users(user_id),
+    created_at            TIMESTAMP NOT NULL DEFAULT now(),
+    updated_at            TIMESTAMP NOT NULL DEFAULT now(),
+    UNIQUE(employee_id, attendance_date)
+);
+CREATE INDEX idx_attendance_date ON attendance_entries(attendance_date);
+CREATE INDEX idx_attendance_employee ON attendance_entries(employee_id, attendance_date);
 
 INSERT INTO companies (company_name, is_sub_company, parent_company_id) VALUES
- ('Company Tech Pvt Ltd', FALSE, NULL);
-INSERT INTO companies (company_name, is_sub_company, parent_company_id) VALUES
+ ('Company Tech Pvt Ltd', FALSE, NULL),
  ('Company Logistics', TRUE, 1),
  ('Company Retail', TRUE, 1);
 
 INSERT INTO locations (location_name) VALUES ('Chennai'),('Bengaluru'),('Pune'),('Remote');
 
-INSERT INTO departments (department_name) VALUES ('Product'),('Engineering'),('Finance'),('HR');
+INSERT INTO departments (department_name, ot_allowed, min_ot_minutes, max_ot_minutes, required_work_minutes) VALUES
+ ('Product', TRUE, 30, 240, 480),
+ ('Engineering', TRUE, 30, 240, 480),
+ ('Finance', FALSE, NULL, NULL, 480),
+ ('HR', FALSE, NULL, NULL, 480);
 
-INSERT INTO shift_templates (shift_name, start_time, end_time, is_next_day, break1_start, break1_end, break2_start, break2_end, lunch_start, lunch_end) VALUES
- ('Day Shift',   '09:30','18:30', FALSE, '11:00','11:15','16:00','16:15','13:00','13:30'),
- ('Night Shift', '21:30','06:30', TRUE,  '23:30','23:45','03:30','03:45','01:30','02:00');
+INSERT INTO shift_templates
+(shift_code, shift_name, shift_start_time, shift_end_time, lunch_start_time, lunch_end_time,
+ grace_in_minutes, grace_out_minutes, late_after_minutes, early_out_minutes,
+ minimum_work_minutes, half_day_minutes, full_day_minutes, ot_allowed,
+ ot_start_after_minutes, is_night_shift, status)
+VALUES
+('DAY', 'Day Shift', '09:30','18:30','13:00','13:30',10,10,10,10,240,240,480,TRUE,0,FALSE,'Active'),
+('NIGHT', 'Night Shift', '21:30','06:30','01:30','02:00',10,10,10,10,240,240,480,TRUE,0,TRUE,'Active');
 
--- No seeded user account here on purpose. The users table starts genuinely empty,
--- so your very first real signup through the app becomes the bootstrap SuperAdmin
--- (see AuthController.Signup — self-service signup only allows User/HR roles,
--- EXCEPT when the users table is completely empty).
+INSERT INTO attendance_statuses (status, attendance_units, meaning) VALUES
+('PRESENT', 1.00, 'Full day'),
+('ABSENT', 0.00, 'No payable day'),
+('HALF_DAY', 0.50, 'Half day'),
+('WEEKLY_OFF', 0.00, 'Weekly off'),
+('HOLIDAY', 0.00, 'Holiday'),
+('PAID_LEAVE', 1.00, 'Paid leave'),
+('UNPAID_LEAVE', 0.00, 'Unpaid leave'),
+('ON_DUTY', 1.00, 'Full-day official duty');
 
-INSERT INTO employees (emp_code, type, full_name, designation, department_id, company_id, manager_id, date_of_joining, date_of_birth, location_id, email, phone_number, marital_status, status) VALUES
- ('EMP-2021-0007','Regular','Karthik Rajan','Engineering Manager', 2, 1, NULL, '2019-06-11','1988-02-10', 2, 'karthik.r@company.co','+91 9800000002','Married','Active'),
- ('EMP-2026-0143','Regular','Ananya Iyer','Senior Product Analyst', 1, 1, 1, '2023-03-04','1994-07-12', 1, 'ananya.i@company.co','+91 9800000021','Single','Active'),
- ('EMP-2024-0088','Contract','Zoya Khan','Financial Analyst', 3, 3, NULL, '2024-01-15','1996-11-02', 3, 'zoya.k@company.co','+91 9800000045','Single','Active'),
- ('EMP-2022-0031','Regular','Rahul Verma','HR Executive', 4, 1, NULL, '2020-09-01','1991-05-19', 1, 'rahul.v@company.co','+91 9800000078','Married','Inactive'),
- ('EMP-2025-0102','Contract','Meera Nair','QA Engineer', 2, 2, 1, '2025-02-20','1997-08-30', 4, 'meera.n@company.co','+91 9800000019','Single','Active');
+-- Configurable rule equivalent to the supplied rounding table:
+-- 0-29 => 0, 30-59 => 30, 60-89 => 60, etc.
+INSERT INTO ot_rounding_rules (from_minutes, to_minutes, rounded_minutes) VALUES
+(0,29,0),(30,59,30),(60,89,60),(90,119,90),(120,149,120),
+(150,179,150),(180,209,180),(210,239,210);
+
+INSERT INTO employees
+(emp_code, type, full_name, designation, department_id, company_id, manager_id, shift_id, role_type,
+ date_of_joining, date_of_birth, location_id, email, phone_number, marital_status, status)
+VALUES
+('EMP-2021-0007','Regular','Karthik Rajan','Engineering Manager',2,1,NULL,1,'Admin','2019-06-11','1988-02-10',2,'karthik.r@company.co','+91 9800000002','Married','Active'),
+('EMP-2026-0143','Regular','Ananya Iyer','Senior Product Analyst',1,1,1,1,'User','2023-03-04','1994-07-12',1,'ananya.i@company.co','+91 9800000021','Single','Active'),
+('EMP-2024-0088','Contract','Zoya Khan','Financial Analyst',3,3,NULL,1,'User','2024-01-15','1996-11-02',3,'zoya.k@company.co','+91 9800000045','Single','Active'),
+('EMP-2022-0031','Regular','Rahul Verma','HR Executive',4,1,NULL,1,'HR','2020-09-01','1991-05-19',1,'rahul.v@company.co','+91 9800000078','Married','Inactive'),
+('EMP-2025-0102','Contract','Meera Nair','QA Engineer',2,2,1,2,'User','2025-02-20','1997-08-30',4,'meera.n@company.co','+91 9800000019','Single','Active');
 
 INSERT INTO employee_shift_assignment (employee_id, shift_id, effective_from) VALUES
- (1,1,'2019-06-11'), (2,1,'2023-03-04'), (3,1,'2024-01-15'), (4,1,'2020-09-01'), (5,2,'2025-02-20');
+(1,1,'2019-06-11'),(2,1,'2023-03-04'),(3,1,'2024-01-15'),(4,1,'2020-09-01'),(5,2,'2025-02-20');

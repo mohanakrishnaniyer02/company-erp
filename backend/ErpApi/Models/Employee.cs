@@ -12,6 +12,9 @@ public class Employee
     public int? CompanyId { get; set; }
     public Company? Company { get; set; }
     public int? ManagerId { get; set; }
+    public int? ShiftId { get; set; }
+    public ShiftTemplate? Shift { get; set; }
+    public string RoleType { get; set; } = "User"; // User | HR | Admin | SuperAdmin
     public Employee? Manager { get; set; }
     public DateOnly? DateOfJoining { get; set; }
     public DateOnly? DateOfBirth { get; set; }
