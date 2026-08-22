@@ -21,6 +21,7 @@ public class AppDbContext : DbContext
     public DbSet<AttendanceStatus> AttendanceStatuses => Set<AttendanceStatus>();
     public DbSet<OtRoundingRule> OtRoundingRules => Set<OtRoundingRule>();
     public DbSet<AttendanceEntry> AttendanceEntries => Set<AttendanceEntry>();
+    public DbSet<AttendancePunch> AttendancePunches => Set<AttendancePunch>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -231,16 +232,6 @@ public class AppDbContext : DbContext
             e.Property(x => x.ShiftId).HasColumnName("shift_id");
             e.Property(x => x.AttendanceStatusId).HasColumnName("attendance_status_id");
             e.Property(x => x.EntryType).HasColumnName("entry_type");
-            e.Property(x => x.In1).HasColumnName("in1");
-            e.Property(x => x.Out1).HasColumnName("out1");
-            e.Property(x => x.In2).HasColumnName("in2");
-            e.Property(x => x.Out2).HasColumnName("out2");
-            e.Property(x => x.In3).HasColumnName("in3");
-            e.Property(x => x.Out3).HasColumnName("out3");
-            e.Property(x => x.In4).HasColumnName("in4");
-            e.Property(x => x.Out4).HasColumnName("out4");
-            e.Property(x => x.In5).HasColumnName("in5");
-            e.Property(x => x.Out5).HasColumnName("out5");
             e.Property(x => x.ActualWorkMinutes).HasColumnName("actual_work_minutes");
             e.Property(x => x.RequiredWorkMinutes).HasColumnName("required_work_minutes");
             e.Property(x => x.CalculatedOtMinutes).HasColumnName("calculated_ot_minutes");
@@ -254,6 +245,20 @@ public class AppDbContext : DbContext
             e.HasOne(x => x.Employee).WithMany().HasForeignKey(x => x.EmployeeId);
             e.HasOne(x => x.Shift).WithMany().HasForeignKey(x => x.ShiftId);
             e.HasOne(x => x.AttendanceStatus).WithMany().HasForeignKey(x => x.AttendanceStatusId);
+        });
+
+        modelBuilder.Entity<AttendancePunch>(e =>
+        {
+            e.ToTable("attendance_punches");
+            e.HasKey(x => x.PunchId);
+            e.Property(x => x.PunchId).HasColumnName("punch_id");
+            e.Property(x => x.AttendanceId).HasColumnName("attendance_id");
+            e.Property(x => x.SequenceNo).HasColumnName("sequence_no");
+            e.Property(x => x.PunchIn).HasColumnName("punch_in");
+            e.Property(x => x.PunchOut).HasColumnName("punch_out");
+            e.HasIndex(x => new { x.AttendanceId, x.SequenceNo }).IsUnique();
+            e.HasOne(x => x.AttendanceEntry).WithMany(x => x.Punches)
+                .HasForeignKey(x => x.AttendanceId).OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

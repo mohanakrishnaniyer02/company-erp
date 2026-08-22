@@ -47,6 +47,7 @@ public class AttendanceController : ControllerBase
     {
         var entry = await _db.AttendanceEntries
             .Include(a => a.Employee).Include(a => a.Shift).Include(a => a.AttendanceStatus)
+            .Include(a => a.Punches.OrderBy(p => p.SequenceNo))
             .FirstOrDefaultAsync(a => a.AttendanceId == id);
         return entry == null ? NotFound() : Ok(entry);
     }
@@ -79,12 +80,10 @@ public class AttendanceController : ControllerBase
         if (employee == null) return NotFound(new { message = "Employee not found." });
 
         var existing = await _db.AttendanceEntries
+            .Include(a => a.Punches)
             .FirstOrDefaultAsync(a => a.EmployeeId == req.EmployeeId && a.AttendanceDate == req.AttendanceDate);
 
-        var requestForCalculation = new AttendanceCalculationRequest(
-            req.EmployeeId, req.ShiftId,
-            req.In1, req.Out1, req.In2, req.Out2, req.In3, req.Out3,
-            req.In4, req.Out4, req.In5, req.Out5);
+        var requestForCalculation = new AttendanceCalculationRequest(req.EmployeeId, req.ShiftId, req.Punches);
 
         var calculation = await CalculateInternal(requestForCalculation);
         if (calculation.Error != null) return BadRequest(new { message = calculation.Error });
@@ -106,15 +105,20 @@ public class AttendanceController : ControllerBase
             };
             _db.AttendanceEntries.Add(existing);
         }
+        else
+        {
+            // Full replace of this day's punch rows — simplest correct semantics for a
+            // "save the whole day's entry" form, same as the old fixed-column version
+            // implicitly did by overwriting in1..out5 every save.
+            _db.AttendancePunches.RemoveRange(existing.Punches);
+        }
 
         existing.ShiftId = req.ShiftId;
         existing.AttendanceStatusId = req.AttendanceStatusId;
         existing.EntryType = req.EntryType;
-        existing.In1 = req.In1; existing.Out1 = req.Out1;
-        existing.In2 = req.In2; existing.Out2 = req.Out2;
-        existing.In3 = req.In3; existing.Out3 = req.Out3;
-        existing.In4 = req.In4; existing.Out4 = req.Out4;
-        existing.In5 = req.In5; existing.Out5 = req.Out5;
+        existing.Punches = (req.Punches ?? new List<PunchPairDto>())
+            .Select((p, idx) => new AttendancePunch { SequenceNo = idx + 1, PunchIn = p.PunchIn, PunchOut = p.PunchOut })
+            .ToList();
         existing.ActualWorkMinutes = result.ActualWorkMinutes;
         existing.RequiredWorkMinutes = result.RequiredWorkMinutes;
         existing.CalculatedOtMinutes = result.CalculatedOtMinutes;
@@ -175,21 +179,17 @@ public class AttendanceController : ControllerBase
         var shift = await _db.ShiftTemplates.FirstOrDefaultAsync(s => s.ShiftId == req.ShiftId);
         if (shift == null) return (null, "Shift not found.");
 
-        var pairs = new[]
-        {
-            (req.In1, req.Out1), (req.In2, req.Out2), (req.In3, req.Out3),
-            (req.In4, req.Out4), (req.In5, req.Out5)
-        };
-
         var actual = 0;
-        foreach (var (start, end) in pairs)
+        var seq = 0;
+        foreach (var p in req.Punches ?? new List<PunchPairDto>())
         {
-            if (start.HasValue && !end.HasValue)
-                return (null, "Every In punch must have a matching Out punch.");
-            if (!start.HasValue && end.HasValue)
-                return (null, "An Out punch cannot exist without its matching In punch.");
-            if (start.HasValue && end.HasValue)
-                actual += DurationMinutesExcludingLunch(start.Value, end.Value, shift.LunchStartTime, shift.LunchEndTime);
+            seq++;
+            if (p.PunchIn.HasValue && !p.PunchOut.HasValue)
+                return (null, $"Punch pair {seq}: an In time needs a matching Out time.");
+            if (!p.PunchIn.HasValue && p.PunchOut.HasValue)
+                return (null, $"Punch pair {seq}: an Out time needs a matching In time.");
+            if (p.PunchIn.HasValue && p.PunchOut.HasValue)
+                actual += DurationMinutesExcludingLunch(p.PunchIn.Value, p.PunchOut.Value, shift.LunchStartTime, shift.LunchEndTime);
         }
 
         var required = employee.Department?.RequiredWorkMinutes ?? shift.FullDayMinutes;

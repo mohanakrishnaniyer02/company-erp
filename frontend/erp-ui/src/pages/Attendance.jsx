@@ -2,7 +2,13 @@ import { useEffect, useMemo, useState } from 'react'
 import api from '../api/client'
 import Topbar from '../components/Topbar.jsx'
 
-const emptyPunches = {in1:'',out1:'',in2:'',out2:'',in3:'',out3:'',in4:'',out4:'',in5:'',out5:''}
+const emptyPunches = [{in:'',out:''},{in:'',out:''}]
+
+function punchesToPayload(punches) {
+  return punches
+    .filter(p => p.in || p.out)
+    .map(p => ({punchIn: p.in || null, punchOut: p.out || null}))
+}
 
 function formatMinutes(value) {
   const n = Number(value || 0)
@@ -45,11 +51,10 @@ export default function Attendance() {
       api.get(`/attendance/${existing.attendanceId}`).then(r=>{
         const a=r.data
         setShiftId(String(a.shiftId)); setAttendanceStatusId(String(a.attendanceStatusId)); setEntryType(a.entryType)
-        setPunches({
-          in1:(a.in1||'').slice(0,5),out1:(a.out1||'').slice(0,5),in2:(a.in2||'').slice(0,5),out2:(a.out2||'').slice(0,5),
-          in3:(a.in3||'').slice(0,5),out3:(a.out3||'').slice(0,5),in4:(a.in4||'').slice(0,5),out4:(a.out4||'').slice(0,5),
-          in5:(a.in5||'').slice(0,5),out5:(a.out5||'').slice(0,5)
-        })
+        const loaded = (a.punches || [])
+          .slice().sort((x,y)=>x.sequenceNo-y.sequenceNo)
+          .map(p => ({in:(p.punchIn||'').slice(0,5), out:(p.punchOut||'').slice(0,5)}))
+        setPunches(loaded.length ? loaded : emptyPunches)
         setApprovedOt(String(a.approvedOtMinutes??a.roundedOtMinutes??0)); setReason(a.reason||'')
         setCalc({actualWorkMinutes:a.actualWorkMinutes,requiredWorkMinutes:a.requiredWorkMinutes,calculatedOtMinutes:a.calculatedOtMinutes,roundedOtMinutes:a.roundedOtMinutes,approvedOtMinutes:a.approvedOtMinutes})
       })
@@ -63,19 +68,24 @@ export default function Attendance() {
     if(!employeeId || !shiftId) return
     const timer=setTimeout(async()=>{
       try{
-        const payload={employeeId:Number(employeeId),shiftId:Number(shiftId),
-          in1:punches.in1||null,out1:punches.out1||null,in2:punches.in2||null,out2:punches.out2||null,
-          in3:punches.in3||null,out3:punches.out3||null,in4:punches.in4||null,out4:punches.out4||null,
-          in5:punches.in5||null,out5:punches.out5||null}
+        const payload={employeeId:Number(employeeId),shiftId:Number(shiftId),punches:punchesToPayload(punches)}
         const r=await api.post('/attendance/calculate',payload)
         setCalc(r.data)
         if(approvedOt==='' || Number(approvedOt)===calc.roundedOtMinutes) setApprovedOt(String(r.data.roundedOtMinutes))
       }catch{}
     },300)
     return()=>clearTimeout(timer)
-  },[employeeId,shiftId,...Object.values(punches)])
+  },[employeeId,shiftId,JSON.stringify(punches)])
 
-  function setPunch(k,v){setPunches(p=>({...p,[k]:v}))}
+  function setPunch(index,field,value){
+    setPunches(rows => rows.map((r,i) => i===index ? {...r,[field]:value} : r))
+  }
+  function addPunchRow(){
+    setPunches(rows => [...rows, {in:'',out:''}])
+  }
+  function removePunchRow(index){
+    setPunches(rows => rows.length<=1 ? rows : rows.filter((_,i)=>i!==index))
+  }
 
   async function save(e){
     e.preventDefault();setError('');setSuccess('')
@@ -83,9 +93,7 @@ export default function Attendance() {
     try{
       await api.post('/attendance',{
         employeeId:Number(employeeId),attendanceDate:date,shiftId:Number(shiftId),attendanceStatusId:Number(attendanceStatusId),
-        entryType,in1:punches.in1||null,out1:punches.out1||null,in2:punches.in2||null,out2:punches.out2||null,
-        in3:punches.in3||null,out3:punches.out3||null,in4:punches.in4||null,out4:punches.out4||null,
-        in5:punches.in5||null,out5:punches.out5||null,
+        entryType,punches:punchesToPayload(punches),
         approvedOtMinutes:approvedOt===''?null:Number(approvedOt),reason:reason||null
       })
       setSuccess(`Attendance saved for ${selectedEmployee?.fullName}.`)
@@ -142,14 +150,16 @@ export default function Attendance() {
       </div>
 
       <div className="card">
-        <div className="section-head-inline"><div><h3>In / Out Punches</h3><p className="card-sub">Five punch pairs are stored directly on the attendance row for predictable performance.</p></div></div>
-        <div className="punch-grid">
-          {[1,2,3,4,5].map(n=><div className="punch-pair" key={n}>
-            <div className="punch-number">{n}</div>
-            <div className="field"><label>In{n}</label><input type="time" value={punches[`in${n}`]} onChange={e=>setPunch(`in${n}`,e.target.value)}/></div>
-            <div className="field"><label>Out{n}</label><input type="time" value={punches[`out${n}`]} onChange={e=>setPunch(`out${n}`,e.target.value)}/></div>
-          </div>)}
-        </div>
+        <div className="section-head-inline"><div><h3>In / Out Punches</h3><p className="card-sub">Add as many In/Out pairs as this employee actually punched that day — no fixed limit.</p></div></div>
+        {punches.map((p,i)=>(
+          <div className="rep-row" key={i}>
+            <div className="field" style={{margin:0}}><label>In {i+1}</label><input type="time" value={p.in} onChange={e=>setPunch(i,'in',e.target.value)}/></div>
+            <div className="field" style={{margin:0}}><label>Out {i+1}</label><input type="time" value={p.out} onChange={e=>setPunch(i,'out',e.target.value)}/></div>
+            <div></div>
+            <button type="button" className="icon-btn" onClick={()=>removePunchRow(i)} title="Remove this pair">✕</button>
+          </div>
+        ))}
+        <button type="button" className="add-row-btn" onClick={addPunchRow}>＋ Add another In/Out</button>
       </div>
 
       <div className="card">

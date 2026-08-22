@@ -34,16 +34,15 @@ public record DepartmentRequest(
 
 public record AssignShiftRequest(int ShiftId, DateOnly EffectiveFrom);
 
+public record PunchPairDto(TimeOnly? PunchIn, TimeOnly? PunchOut);
+
 public record AttendanceUpsertRequest(
     int EmployeeId, DateOnly AttendanceDate, int ShiftId, int AttendanceStatusId, string EntryType,
-    TimeOnly? In1, TimeOnly? Out1, TimeOnly? In2, TimeOnly? Out2, TimeOnly? In3, TimeOnly? Out3,
-    TimeOnly? In4, TimeOnly? Out4, TimeOnly? In5, TimeOnly? Out5,
+    List<PunchPairDto> Punches,
     int? ApprovedOtMinutes, string? Reason);
 
 public record AttendanceCalculationRequest(
-    int EmployeeId, int ShiftId,
-    TimeOnly? In1, TimeOnly? Out1, TimeOnly? In2, TimeOnly? Out2, TimeOnly? In3, TimeOnly? Out3,
-    TimeOnly? In4, TimeOnly? Out4, TimeOnly? In5, TimeOnly? Out5);
+    int EmployeeId, int ShiftId, List<PunchPairDto> Punches);
 
 public record AttendanceCalculationResult(
     int ActualWorkMinutes, int RequiredWorkMinutes, int CalculatedOtMinutes,

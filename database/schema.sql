@@ -2,6 +2,7 @@
 -- Company HR / ERP — PostgreSQL schema
 -- ============================================================
 
+DROP TABLE IF EXISTS attendance_punches CASCADE;
 DROP TABLE IF EXISTS attendance_entries CASCADE;
 DROP TABLE IF EXISTS ot_rounding_rules CASCADE;
 DROP TABLE IF EXISTS attendance_statuses CASCADE;
@@ -175,11 +176,6 @@ CREATE TABLE attendance_entries (
     attendance_status_id  INT NOT NULL REFERENCES attendance_statuses(attendance_status_id),
     entry_type             VARCHAR(20) NOT NULL DEFAULT 'User'
                            CHECK (entry_type IN ('User','Biometric')),
-    in1 TIME, out1 TIME,
-    in2 TIME, out2 TIME,
-    in3 TIME, out3 TIME,
-    in4 TIME, out4 TIME,
-    in5 TIME, out5 TIME,
     actual_work_minutes   INT NOT NULL DEFAULT 0,
     required_work_minutes INT NOT NULL DEFAULT 0,
     calculated_ot_minutes INT NOT NULL DEFAULT 0,
@@ -193,6 +189,18 @@ CREATE TABLE attendance_entries (
 );
 CREATE INDEX idx_attendance_date ON attendance_entries(attendance_date);
 CREATE INDEX idx_attendance_employee ON attendance_entries(employee_id, attendance_date);
+
+-- One row per In/Out pair for a day, instead of a fixed in1..out5 column set —
+-- an employee can have as many punch pairs as they actually made that day.
+CREATE TABLE attendance_punches (
+    punch_id       SERIAL PRIMARY KEY,
+    attendance_id  INT NOT NULL REFERENCES attendance_entries(attendance_id) ON DELETE CASCADE,
+    sequence_no    INT NOT NULL,
+    punch_in       TIME,
+    punch_out      TIME,
+    UNIQUE(attendance_id, sequence_no)
+);
+CREATE INDEX idx_attendance_punches_attendance ON attendance_punches(attendance_id);
 
 INSERT INTO companies (company_name, is_sub_company, parent_company_id) VALUES
  ('Company Tech Pvt Ltd', FALSE, NULL),

@@ -12,16 +12,7 @@ public class AttendanceEntry
     public AttendanceStatus? AttendanceStatus { get; set; }
     public string EntryType { get; set; } = "User"; // User | Biometric
 
-    public TimeOnly? In1 { get; set; }
-    public TimeOnly? Out1 { get; set; }
-    public TimeOnly? In2 { get; set; }
-    public TimeOnly? Out2 { get; set; }
-    public TimeOnly? In3 { get; set; }
-    public TimeOnly? Out3 { get; set; }
-    public TimeOnly? In4 { get; set; }
-    public TimeOnly? Out4 { get; set; }
-    public TimeOnly? In5 { get; set; }
-    public TimeOnly? Out5 { get; set; }
+    public List<AttendancePunch> Punches { get; set; } = new();
 
     public int ActualWorkMinutes { get; set; }
     public int RequiredWorkMinutes { get; set; }
