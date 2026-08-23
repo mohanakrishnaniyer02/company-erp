@@ -12,6 +12,7 @@ export default function EmployeeList() {
   const [employees, setEmployees] = useState([])
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState('all')
+  const [roleFilter, setRoleFilter] = useState('all')
   const [error, setError] = useState('')
   const navigate = useNavigate()
 
@@ -19,10 +20,11 @@ export default function EmployeeList() {
     const params = {}
     if (search) params.search = search
     if (filter !== 'all') params.type = filter
+    if (roleFilter !== 'all') params.roleType = roleFilter
     api.get('/employees', { params })
       .then(res => setEmployees(res.data))
       .catch(() => setError('Could not load employees. Is the API running?'))
-  }, [search, filter])
+  }, [search, filter, roleFilter])
 
   useEffect(() => { load() }, [load])
 
@@ -49,6 +51,13 @@ export default function EmployeeList() {
         <button type="button" className={'chip' + (filter==='all'?' active':'')} onClick={() => setFilter('all')}>All</button>
         <button type="button" className={'chip' + (filter==='Regular'?' active':'')} onClick={() => setFilter('Regular')}>Regular</button>
         <button type="button" className={'chip' + (filter==='Contract'?' active':'')} onClick={() => setFilter('Contract')}>Contract</button>
+      </div>
+      <div className="filter-chips" style={{marginTop:-6}}>
+        <button type="button" className={'chip' + (roleFilter==='all'?' active':'')} onClick={() => setRoleFilter('all')}>All Roles</button>
+        <button type="button" className={'chip' + (roleFilter==='User'?' active':'')} onClick={() => setRoleFilter('User')}>User</button>
+        <button type="button" className={'chip' + (roleFilter==='HR'?' active':'')} onClick={() => setRoleFilter('HR')}>HR</button>
+        <button type="button" className={'chip' + (roleFilter==='Admin'?' active':'')} onClick={() => setRoleFilter('Admin')}>Admin</button>
+        <button type="button" className={'chip' + (roleFilter==='SuperAdmin'?' active':'')} onClick={() => setRoleFilter('SuperAdmin')}>SuperAdmin</button>
       </div>
 
       {error && <div className="auth-error" style={{marginBottom:16}}>{error}</div>}

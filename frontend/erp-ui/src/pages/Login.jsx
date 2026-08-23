@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
+import AuthBackground from '../components/AuthBackground.jsx'
 
 export default function Login() {
   const [error, setError] = useState('')
@@ -23,6 +24,7 @@ export default function Login() {
 
   return (
     <div id="auth">
+      <AuthBackground />
       <div className="auth-wrap">
         <div className="auth-logo"><div className="sq">C</div><span>Company HR</span></div>
         <div className="auth-card">

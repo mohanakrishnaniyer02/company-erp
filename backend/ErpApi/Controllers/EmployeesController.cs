@@ -32,10 +32,10 @@ public class EmployeesController : ControllerBase
         _jwt = jwt;
     }
 
-    // GET /api/employees?search=&type=&departmentId=
+    // GET /api/employees?search=&type=&departmentId=&roleType=
     [HttpGet]
     public async Task<ActionResult<IEnumerable<EmployeeListItem>>> GetAll(
-        [FromQuery] string? search, [FromQuery] string? type, [FromQuery] int? departmentId)
+        [FromQuery] string? search, [FromQuery] string? type, [FromQuery] int? departmentId, [FromQuery] string? roleType)
     {
         var query = _db.Employees.Include(e => e.Department).Include(e => e.LocationRef).Include(e => e.Shift).AsQueryable();
 
@@ -46,6 +46,8 @@ public class EmployeesController : ControllerBase
             query = query.Where(e => e.Type == type);
         if (departmentId.HasValue)
             query = query.Where(e => e.DepartmentId == departmentId);
+        if (!string.IsNullOrWhiteSpace(roleType))
+            query = query.Where(e => e.RoleType == roleType);
 
         var result = await query
             .OrderByDescending(e => e.DateOfJoining)
