@@ -68,7 +68,6 @@ export default function Dashboard() {
     <Topbar crumbs={<b>Dashboard</b>}/>
     <div className="page-head">
       <div><h1>Dashboard</h1><p>Workforce, attendance and payroll-oriented work summary.</p></div>
-      <button type="button" className="btn-blue" onClick={()=>navigate('/employees/new')}>＋ Add Employee</button>
     </div>
     {error&&<div className="auth-error" style={{marginBottom:16}}>{error}</div>}
     {stats&&<>
@@ -174,10 +173,6 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="card">
-        <h3>Recent joiners</h3><p className="card-sub">Most recently added employees</p>
-        {stats.recentJoiners.map(e=><div className="recent-row" key={e.employeeId}><div className="who"><div className="av">{e.fullName.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase()}</div><div>{e.fullName}<div className="meta">{e.designation} · {e.shiftName||'No shift'}</div></div></div></div>)}
-      </div>
     </>}
   </>
 }
