@@ -15,16 +15,21 @@ export function AuthProvider({ children }) {
     return data
   }
 
-  async function signup(fullName, email, password, role) {
-    const { data } = await api.post('/auth/signup', { fullName, email, password, role })
-    persist(data)
-    return data
-  }
-
   function persist(data) {
     localStorage.setItem('company_token', data.token)
     localStorage.setItem('company_user', JSON.stringify(data))
     setUser(data)
+  }
+
+  // Called after a successful password change so the mandatory-change
+  // redirect stops firing, without needing the user to log in again.
+  function clearMustChangePassword() {
+    setUser(u => {
+      if (!u) return u
+      const updated = { ...u, mustChangePassword: false }
+      localStorage.setItem('company_user', JSON.stringify(updated))
+      return updated
+    })
   }
 
   function logout() {
@@ -34,7 +39,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, login, signup, logout }}>
+    <AuthContext.Provider value={{ user, login, logout, clearMustChangePassword }}>
       {children}
     </AuthContext.Provider>
   )

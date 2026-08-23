@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import Login from './pages/Login.jsx'
+import ChangePassword from './pages/ChangePassword.jsx'
 import Dashboard from './pages/Dashboard.jsx'
 import EmployeeList from './pages/EmployeeList.jsx'
 import EmployeeProfile from './pages/EmployeeProfile.jsx'
@@ -15,6 +16,7 @@ export default function App() {
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route element={<ProtectedRoute />}>
+        <Route path="/change-password" element={<ChangePassword />} />
         <Route element={<AppShell />}>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<Dashboard />} />

@@ -8,6 +8,7 @@ public class User
     public string PasswordHash { get; set; } = string.Empty;
     public string Role { get; set; } = "User"; // User | HR | Admin | SuperAdmin
     public string? JwtToken { get; set; }
+    public bool MustChangePassword { get; set; } = true;
     public bool IsActive { get; set; } = true;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }

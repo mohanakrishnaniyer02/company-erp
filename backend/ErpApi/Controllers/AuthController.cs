@@ -1,6 +1,6 @@
+using System.Security.Claims;
 using ErpApi.Data;
 using ErpApi.DTOs;
-using ErpApi.Models;
 using ErpApi.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -8,14 +8,17 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ErpApi.Controllers;
 
+// There is no public signup anymore. The database is seeded with exactly one
+// working SuperAdmin account (see schema.sql / the bootstrap migration) — log
+// in with that once, you're forced to set your own password immediately, and
+// from there every further HR/Admin/SuperAdmin account is created through the
+// Employee form (see EmployeesController), not here.
 [ApiController]
 [Route("api/auth")]
 public class AuthController : ControllerBase
 {
     private readonly AppDbContext _db;
     private readonly IJwtService _jwt;
-    private static readonly string[] ValidRoles = { "User", "HR", "Admin", "SuperAdmin" };
-    private static readonly string[] SelfServiceRoles = { "HR" }; // "User" can't log in at all now, so self-signup as "User" is a dead end — removed
 
     public AuthController(AppDbContext db, IJwtService jwt)
     {
@@ -23,83 +26,10 @@ public class AuthController : ControllerBase
         _jwt = jwt;
     }
 
-    // POST /api/auth/signup
-    // Public, unauthenticated endpoint. Self-service signup is intentionally limited to
-    // low-privilege roles (User, HR) — see CreateUser below for how Admin/SuperAdmin
-    // accounts get created. The ONE exception: if the users table is completely empty
-    // (fresh install), the very first signup may pick any role, so you can bootstrap
-    // your own Admin/SuperAdmin account without needing direct DB access.
-    [HttpPost("signup")]
-    public async Task<ActionResult<AuthResponse>> Signup(SignupRequest req)
-    {
-        var validation = ValidateSignupInput(req);
-        if (validation != null) return validation;
-
-        var isFirstUserEver = !await _db.Users.AnyAsync();
-        if (!isFirstUserEver && !SelfServiceRoles.Contains(req.Role))
-        {
-            return BadRequest(new
-            {
-                message = "Self-service signup is limited to the HR role. " +
-                           "Ask an existing Admin or SuperAdmin to create Admin/SuperAdmin accounts " +
-                           "via POST /api/auth/create-user."
-            });
-        }
-
-        if (await _db.Users.AnyAsync(u => u.Email == req.Email))
-            return Conflict(new { message = "An account with this email already exists." });
-
-        var user = new User
-        {
-            FullName = req.FullName,
-            Email = req.Email,
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword(req.Password),
-            Role = req.Role
-        };
-        _db.Users.Add(user);
-        await _db.SaveChangesAsync();
-
-        var token = _jwt.GenerateToken(user);
-        user.JwtToken = token;
-        await _db.SaveChangesAsync();
-
-        return Ok(new AuthResponse(user.UserId, user.FullName, user.Email, user.Role, token));
-    }
-
-    // POST /api/auth/create-user
-    // Admin/SuperAdmin only. This is the correct way to create HR/Admin/SuperAdmin
-    // accounts after the initial bootstrap signup above.
-    [HttpPost("create-user")]
-    [Authorize(Roles = "Admin,SuperAdmin")]
-    public async Task<ActionResult<AuthResponse>> CreateUser(SignupRequest req)
-    {
-        var validation = ValidateSignupInput(req);
-        if (validation != null) return validation;
-
-        if (await _db.Users.AnyAsync(u => u.Email == req.Email))
-            return Conflict(new { message = "An account with this email already exists." });
-
-        var user = new User
-        {
-            FullName = req.FullName,
-            Email = req.Email,
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword(req.Password),
-            Role = req.Role
-        };
-        _db.Users.Add(user);
-        await _db.SaveChangesAsync();
-
-        var token = _jwt.GenerateToken(user);
-        user.JwtToken = token;
-        await _db.SaveChangesAsync();
-
-        return Ok(new AuthResponse(user.UserId, user.FullName, user.Email, user.Role, token));
-    }
-
     // POST /api/auth/login
-    // Per spec: no refresh-token flow. The token issued at signup is reused for every
-    // subsequent login — we do NOT mint a new JWT on each login. Login only re-verifies
-    // the password and hands back the token already stored against this user.
+    // Per spec: no refresh-token flow. The token issued when the account was created
+    // (via the Employee form, or this seed) is reused for every subsequent login —
+    // we do NOT mint a new JWT just because someone logged in again.
     [HttpPost("login")]
     public async Task<ActionResult<AuthResponse>> Login(LoginRequest req)
     {
@@ -113,28 +43,50 @@ public class AuthController : ControllerBase
         var token = user.JwtToken;
         if (string.IsNullOrEmpty(token))
         {
-            // Only happens for accounts that never went through /signup (e.g. a row inserted
-            // directly via SQL, like the seeded admin user) — issue one the first time, then
-            // every login after this reuses it same as anyone else.
+            // Only happens for an account whose token somehow never got set —
+            // issue one now, then every login after this reuses it same as anyone else.
             token = _jwt.GenerateToken(user);
             user.JwtToken = token;
             await _db.SaveChangesAsync();
         }
 
-        return Ok(new AuthResponse(user.UserId, user.FullName, user.Email, user.Role, token));
+        return Ok(new AuthResponse(user.UserId, user.FullName, user.Email, user.Role, token, user.MustChangePassword));
     }
 
-    private ActionResult? ValidateSignupInput(SignupRequest req)
+    // PUT /api/auth/change-password
+    // Works for two situations: a mandatory first-login change (must_change_password
+    // was true) and a voluntary change any time after that. Either way this does NOT
+    // touch the JWT — the token doesn't encode the password, only identity and role,
+    // so it stays valid and reused exactly as before.
+    [HttpPut("change-password")]
+    [Authorize]
+    public async Task<IActionResult> ChangePassword(ChangePasswordRequest req)
     {
-        if (string.IsNullOrWhiteSpace(req.FullName) || string.IsNullOrWhiteSpace(req.Email) || string.IsNullOrWhiteSpace(req.Password))
-            return BadRequest(new { message = "Full name, email and password are required." });
+        var userId = GetUserId();
+        if (userId == null) return Unauthorized();
 
-        if (!ValidRoles.Contains(req.Role))
-            return BadRequest(new { message = "Role must be one of: User, HR, Admin, SuperAdmin." });
+        var user = await _db.Users.FindAsync(userId.Value);
+        if (user == null) return NotFound();
 
-        if (req.Password.Length < 8 || !req.Password.Any(char.IsDigit) || !req.Password.Any(char.IsLetter))
-            return BadRequest(new { message = "Password must be at least 8 characters and include both letters and numbers." });
+        if (!BCrypt.Net.BCrypt.Verify(req.CurrentPassword, user.PasswordHash))
+            return BadRequest(new { message = "Current password is incorrect." });
 
-        return null;
+        if (req.NewPassword.Length < 8 || !req.NewPassword.Any(char.IsDigit) || !req.NewPassword.Any(char.IsLetter))
+            return BadRequest(new { message = "New password must be at least 8 characters and include both letters and numbers." });
+
+        if (BCrypt.Net.BCrypt.Verify(req.NewPassword, user.PasswordHash))
+            return BadRequest(new { message = "New password must be different from your current password." });
+
+        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(req.NewPassword);
+        user.MustChangePassword = false;
+        await _db.SaveChangesAsync();
+
+        return Ok(new { message = "Password updated." });
+    }
+
+    private int? GetUserId()
+    {
+        var value = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
+        return int.TryParse(value, out var id) ? id : null;
     }
 }

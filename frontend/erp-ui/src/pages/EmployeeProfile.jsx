@@ -213,8 +213,8 @@ export default function EmployeeProfile({ mode }) {
                     />
                     <small className="field-help">
                       {hasLogin
-                        ? 'This person already has login access — only fill this in to change their password.'
-                        : `This grants ${form.fullName || 'this employee'} a real login as ${form.roleType}.`}
+                        ? 'This person already has login access — only fill this in to reset their password (they\'ll be asked to set their own again on next login).'
+                        : `This is a temporary password for ${form.fullName || 'this employee'} — they'll be asked to set their own the first time they log in.`}
                     </small>
                   </div>
                 )}

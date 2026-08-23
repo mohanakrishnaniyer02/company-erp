@@ -35,6 +35,7 @@ public class AppDbContext : DbContext
             e.Property(x => x.PasswordHash).HasColumnName("password_hash");
             e.Property(x => x.Role).HasColumnName("role");
             e.Property(x => x.JwtToken).HasColumnName("jwt_token");
+            e.Property(x => x.MustChangePassword).HasColumnName("must_change_password");
             e.Property(x => x.IsActive).HasColumnName("is_active");
             e.Property(x => x.CreatedAt).HasColumnName("created_at");
             e.HasIndex(x => x.Email).IsUnique();

@@ -34,6 +34,7 @@ export default function AppShell() {
         </>}
         <div className="sidebar-bottom">
           Signed in as <b style={{color:'#fff'}}>{user?.role}</b>
+          <button type="button" onClick={() => navigate('/change-password')}>Change password</button>
           <button type="button" onClick={handleLogout}>← Log out</button>
         </div>
       </div>

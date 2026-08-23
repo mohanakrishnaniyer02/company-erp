@@ -26,6 +26,7 @@ CREATE TABLE users (
     role           VARCHAR(20) NOT NULL DEFAULT 'User'
                    CHECK (role IN ('User','HR','Admin','SuperAdmin')),
     jwt_token      TEXT,
+    must_change_password BOOLEAN NOT NULL DEFAULT TRUE,
     is_active      BOOLEAN NOT NULL DEFAULT TRUE,
     created_at     TIMESTAMP NOT NULL DEFAULT now()
 );
@@ -202,6 +203,15 @@ CREATE TABLE attendance_punches (
     UNIQUE(attendance_id, sequence_no)
 );
 CREATE INDEX idx_attendance_punches_attendance ON attendance_punches(attendance_id);
+
+-- One working bootstrap SuperAdmin account, seeded directly — no public signup
+-- exists anymore. Log in with this once, you'll be forced to set your own
+-- password immediately (must_change_password), then use the Employee form to
+-- add real Admin/HR people for the organization.
+--   Email:    superadmin@company.co
+--   Password: ChangeMe123!
+INSERT INTO users (full_name, email, password_hash, role, must_change_password) VALUES
+ ('System Administrator', 'superadmin@company.co', '$2b$11$Z9xV0Rh/BjRctSqbT2oEFO1XkR7UbH.2zpk8/TGmom6F/VujYNTX6', 'SuperAdmin', TRUE);
 
 INSERT INTO companies (company_name, is_sub_company, parent_company_id) VALUES
  ('Company Tech Pvt Ltd', FALSE, NULL),

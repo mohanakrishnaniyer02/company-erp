@@ -118,7 +118,8 @@ public class EmployeesController : ControllerBase
                 Email = req.Email!,
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword(req.Password!),
                 Role = roleType,
-                IsActive = true
+                IsActive = true,
+                MustChangePassword = true // admin-assigned password — they set their own on first login
             };
         }
 
@@ -180,7 +181,8 @@ public class EmployeesController : ControllerBase
                     Email = req.Email!,
                     PasswordHash = BCrypt.Net.BCrypt.HashPassword(req.Password!),
                     Role = roleType,
-                    IsActive = true
+                    IsActive = true,
+                    MustChangePassword = true // admin-assigned password — they set their own on first login
                 };
                 _db.Users.Add(newUser);
                 await _db.SaveChangesAsync(); // need newUser.UserId before linking
@@ -192,12 +194,22 @@ public class EmployeesController : ControllerBase
                 // Already has a login — keep it in sync, reactivate if it had been
                 // deactivated by a previous demotion to "User", and only touch the
                 // password if one was actually provided (blank = keep existing password).
+                var roleChanged = emp.User.Role != roleType;
                 emp.User.FullName = req.FullName;
                 emp.User.Email = req.Email ?? emp.User.Email;
                 emp.User.Role = roleType;
                 emp.User.IsActive = true;
                 if (!string.IsNullOrWhiteSpace(req.Password))
+                {
                     emp.User.PasswordHash = BCrypt.Net.BCrypt.HashPassword(req.Password);
+                    emp.User.MustChangePassword = true; // admin reset it — they set their own again on next login
+                }
+                if (roleChanged)
+                {
+                    // Role is embedded in the JWT itself — an old token would keep
+                    // claiming the previous role until a fresh one is issued.
+                    emp.User.JwtToken = _jwt.GenerateToken(emp.User);
+                }
             }
         }
         else if (emp.User != null)
