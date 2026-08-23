@@ -27,7 +27,7 @@ This version builds on the existing ERP project.
    - Night shift
    - Status
 5. Added Daily Attendance Entry for HR/Admin/SuperAdmin.
-6. Attendance supports five In/Out pairs. Values are stored as minutes for calculation and displayed as hours + minutes.
+6. Attendance supports an unlimited number of In/Out pairs per day (a normalized `attendance_punches` table, not a fixed column count). Values are stored as minutes for calculation and displayed as hours + minutes.
 7. Added server-side time calculation:
    - Actual work = sum of punch intervals minus configured lunch overlap.
    - Required work = employee department required work minutes.
