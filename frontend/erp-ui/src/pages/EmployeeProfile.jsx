@@ -52,7 +52,7 @@ export default function EmployeeProfile({ mode }) {
           setForbidden(true)
           return
         }
-        setHasLogin(!!e.userId)
+        setHasLogin(!!e.hasLogin)
         setForm({
           empCode: e.empCode,
           type: e.type, fullName: e.fullName, designation: e.designation || '',

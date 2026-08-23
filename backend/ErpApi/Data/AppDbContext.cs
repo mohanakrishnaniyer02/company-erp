@@ -7,7 +7,6 @@ public class AppDbContext : DbContext
 {
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
-    public DbSet<User> Users => Set<User>();
     public DbSet<Company> Companies => Set<Company>();
     public DbSet<Location> Locations => Set<Location>();
     public DbSet<Department> Departments => Set<Department>();
@@ -25,22 +24,6 @@ public class AppDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        modelBuilder.Entity<User>(e =>
-        {
-            e.ToTable("users");
-            e.HasKey(x => x.UserId);
-            e.Property(x => x.UserId).HasColumnName("user_id");
-            e.Property(x => x.FullName).HasColumnName("full_name");
-            e.Property(x => x.Email).HasColumnName("email");
-            e.Property(x => x.PasswordHash).HasColumnName("password_hash");
-            e.Property(x => x.Role).HasColumnName("role");
-            e.Property(x => x.JwtToken).HasColumnName("jwt_token");
-            e.Property(x => x.MustChangePassword).HasColumnName("must_change_password");
-            e.Property(x => x.IsActive).HasColumnName("is_active");
-            e.Property(x => x.CreatedAt).HasColumnName("created_at");
-            e.HasIndex(x => x.Email).IsUnique();
-        });
-
         modelBuilder.Entity<Company>(e =>
         {
             e.ToTable("companies");
@@ -85,7 +68,9 @@ public class AppDbContext : DbContext
             e.Property(x => x.ManagerId).HasColumnName("manager_id");
             e.Property(x => x.ShiftId).HasColumnName("shift_id");
             e.Property(x => x.RoleType).HasColumnName("role_type");
-            e.Property(x => x.UserId).HasColumnName("user_id");
+            e.Property(x => x.PasswordHash).HasColumnName("password_hash");
+            e.Property(x => x.JwtToken).HasColumnName("jwt_token");
+            e.Property(x => x.MustChangePassword).HasColumnName("must_change_password");
             e.Property(x => x.DateOfJoining).HasColumnName("date_of_joining");
             e.Property(x => x.DateOfBirth).HasColumnName("date_of_birth");
             e.Property(x => x.DateOfLeaving).HasColumnName("date_of_leaving");
@@ -105,8 +90,6 @@ public class AppDbContext : DbContext
             e.HasOne(x => x.LocationRef).WithMany().HasForeignKey(x => x.LocationId);
             e.HasOne(x => x.Manager).WithMany().HasForeignKey(x => x.ManagerId);
             e.HasOne(x => x.Shift).WithMany().HasForeignKey(x => x.ShiftId);
-            e.HasOne(x => x.User).WithOne().HasForeignKey<Employee>(x => x.UserId);
-            e.HasIndex(x => x.UserId).IsUnique();
         });
 
         modelBuilder.Entity<BankDetail>(e =>

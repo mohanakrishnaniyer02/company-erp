@@ -3,5 +3,5 @@ namespace ErpApi.Services;
 
 public interface IJwtService
 {
-    string GenerateToken(User user);
+    string GenerateToken(Employee employee);
 }

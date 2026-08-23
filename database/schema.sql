@@ -18,18 +18,10 @@ DROP TABLE IF EXISTS locations CASCADE;
 DROP TABLE IF EXISTS companies CASCADE;
 DROP TABLE IF EXISTS users CASCADE;
 
-CREATE TABLE users (
-    user_id        SERIAL PRIMARY KEY,
-    full_name      VARCHAR(150) NOT NULL,
-    email          VARCHAR(150) NOT NULL UNIQUE,
-    password_hash  VARCHAR(255) NOT NULL,
-    role           VARCHAR(20) NOT NULL DEFAULT 'User'
-                   CHECK (role IN ('User','HR','Admin','SuperAdmin')),
-    jwt_token      TEXT,
-    must_change_password BOOLEAN NOT NULL DEFAULT TRUE,
-    is_active      BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at     TIMESTAMP NOT NULL DEFAULT now()
-);
+-- No separate users table. Every person is one row in employees — login
+-- credentials (password_hash, jwt_token, must_change_password) live directly
+-- on the employee record and are simply NULL for plain "User"-role employees
+-- who never get application access.
 
 CREATE TABLE companies (
     company_id        SERIAL PRIMARY KEY,
@@ -88,7 +80,9 @@ CREATE TABLE employees (
     shift_id          INT REFERENCES shift_templates(shift_id),
     role_type         VARCHAR(20) NOT NULL DEFAULT 'User'
                       CHECK (role_type IN ('User','HR','Admin','SuperAdmin')),
-    user_id           INT UNIQUE REFERENCES users(user_id),
+    password_hash     VARCHAR(255),
+    jwt_token         TEXT,
+    must_change_password BOOLEAN NOT NULL DEFAULT FALSE,
     date_of_joining   DATE,
     date_of_birth     DATE,
     date_of_leaving   DATE,
@@ -105,6 +99,9 @@ CREATE TABLE employees (
 );
 CREATE INDEX idx_employees_name ON employees (full_name);
 CREATE INDEX idx_employees_dept ON employees (department_id);
+-- Only login-capable accounts need a unique email; plain employees without
+-- application access aren't constrained by this.
+CREATE UNIQUE INDEX ux_employees_login_email ON employees (email) WHERE password_hash IS NOT NULL;
 
 CREATE TABLE employee_bank_details (
     bank_detail_id  SERIAL PRIMARY KEY,
@@ -184,7 +181,7 @@ CREATE TABLE attendance_entries (
     rounded_ot_minutes    INT NOT NULL DEFAULT 0,
     approved_ot_minutes   INT NOT NULL DEFAULT 0,
     reason                TEXT,
-    created_by_user_id    INT REFERENCES users(user_id),
+    created_by_user_id    INT REFERENCES employees(employee_id),
     created_at            TIMESTAMP NOT NULL DEFAULT now(),
     updated_at            TIMESTAMP NOT NULL DEFAULT now(),
     UNIQUE(employee_id, attendance_date)
@@ -204,14 +201,14 @@ CREATE TABLE attendance_punches (
 );
 CREATE INDEX idx_attendance_punches_attendance ON attendance_punches(attendance_id);
 
--- One working bootstrap SuperAdmin account, seeded directly — no public signup
--- exists anymore. Log in with this once, you'll be forced to set your own
--- password immediately (must_change_password), then use the Employee form to
--- add real Admin/HR people for the organization.
+-- One working bootstrap SuperAdmin account, seeded directly as an employee —
+-- no public signup exists anymore. Log in with this once, you'll be forced
+-- to set your own password immediately (must_change_password), then use the
+-- Employee form to add real Admin/HR people for the organization.
 --   Email:    superadmin@company.co
 --   Password: ChangeMe123!
-INSERT INTO users (full_name, email, password_hash, role, must_change_password) VALUES
- ('System Administrator', 'superadmin@company.co', '$2b$11$Z9xV0Rh/BjRctSqbT2oEFO1XkR7UbH.2zpk8/TGmom6F/VujYNTX6', 'SuperAdmin', TRUE);
+INSERT INTO employees (emp_code, type, full_name, role_type, email, password_hash, must_change_password, status) VALUES
+ ('SUPERADMIN-001', 'Regular', 'System Administrator', 'SuperAdmin', 'superadmin@company.co', '$2b$11$Z9xV0Rh/BjRctSqbT2oEFO1XkR7UbH.2zpk8/TGmom6F/VujYNTX6', TRUE, 'Active');
 
 INSERT INTO companies (company_name, is_sub_company, parent_company_id) VALUES
  ('Company Tech Pvt Ltd', FALSE, NULL),

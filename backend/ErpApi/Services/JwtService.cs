@@ -11,14 +11,14 @@ public class JwtService : IJwtService
     private readonly IConfiguration _config;
     public JwtService(IConfiguration config) => _config = config;
 
-    public string GenerateToken(User user)
+    public string GenerateToken(Employee employee)
     {
         var claims = new[]
         {
-            new Claim(JwtRegisteredClaimNames.Sub, user.UserId.ToString()),
-            new Claim(JwtRegisteredClaimNames.Email, user.Email),
-            new Claim(ClaimTypes.Name, user.FullName),
-            new Claim(ClaimTypes.Role, user.Role)
+            new Claim(JwtRegisteredClaimNames.Sub, employee.EmployeeId.ToString()),
+            new Claim(JwtRegisteredClaimNames.Email, employee.Email ?? string.Empty),
+            new Claim(ClaimTypes.Name, employee.FullName),
+            new Claim(ClaimTypes.Role, employee.RoleType)
         };
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"]!));

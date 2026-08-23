@@ -21,7 +21,7 @@ public class AttendanceEntry
     public int ApprovedOtMinutes { get; set; }
     public string? Reason { get; set; }
 
-    public int? CreatedByUserId { get; set; }
+    public int? CreatedByUserId { get; set; } // references employees.employee_id (the person who created this entry)
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }

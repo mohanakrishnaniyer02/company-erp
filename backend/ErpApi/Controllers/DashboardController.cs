@@ -53,7 +53,7 @@ public class DashboardController : ControllerBase
             .Select(e => new EmployeeListItem(
                 e.EmployeeId, e.EmpCode, e.FullName, e.Designation,
                 e.Department?.DepartmentName, e.Type, e.Status, e.LocationRef?.LocationName,
-                e.RoleType, e.ShiftId, e.Shift?.ShiftName, e.UserId != null))
+                e.RoleType, e.ShiftId, e.Shift?.ShiftName, e.PasswordHash != null))
             .ToList();
 
         var today = DateOnly.FromDateTime(DateTime.Now);

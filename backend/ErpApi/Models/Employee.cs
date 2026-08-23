@@ -1,3 +1,6 @@
+using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
+
 namespace ErpApi.Models;
 
 public class Employee
@@ -15,8 +18,15 @@ public class Employee
     public int? ShiftId { get; set; }
     public ShiftTemplate? Shift { get; set; }
     public string RoleType { get; set; } = "User"; // User | HR | Admin | SuperAdmin
-    public int? UserId { get; set; }                // links to the real login account, if RoleType != User
-    public User? User { get; set; }
+
+    // Login credentials — present only when RoleType is HR/Admin/SuperAdmin.
+    // Never serialized back to the client; HasLogin below is the safe,
+    // client-facing signal that these are set.
+    [JsonIgnore] public string? PasswordHash { get; set; }
+    [JsonIgnore] public string? JwtToken { get; set; }
+    public bool MustChangePassword { get; set; } = false;
+    [NotMapped] public bool HasLogin => !string.IsNullOrEmpty(PasswordHash);
+
     public Employee? Manager { get; set; }
     public DateOnly? DateOfJoining { get; set; }
     public DateOnly? DateOfBirth { get; set; }

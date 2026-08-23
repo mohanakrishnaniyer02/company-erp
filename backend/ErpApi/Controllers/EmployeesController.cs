@@ -56,7 +56,7 @@ public class EmployeesController : ControllerBase
                 e.Department != null ? e.Department.DepartmentName : null,
                 e.Type, e.Status, e.LocationRef != null ? e.LocationRef.LocationName : null,
                 e.RoleType, e.ShiftId, e.Shift != null ? e.Shift.ShiftName : null,
-                e.UserId != null))
+                e.PasswordHash != null))
             .ToListAsync();
 
         return Ok(result);
@@ -98,6 +98,9 @@ public class EmployeesController : ControllerBase
         var loginError = ValidateLoginRequirements(roleType, req.Password, req.Email, hasExistingLogin: false);
         if (loginError != null) return BadRequest(new { message = loginError });
 
+        if (LoginRoles.Contains(roleType) && await _db.Employees.AnyAsync(e => e.Email == req.Email && e.PasswordHash != null))
+            return Conflict(new { message = "An account with this email already exists." });
+
         var emp = new Employee
         {
             EmpCode = req.EmpCode,
@@ -123,26 +126,16 @@ public class EmployeesController : ControllerBase
 
         if (LoginRoles.Contains(roleType))
         {
-            if (await _db.Users.AnyAsync(u => u.Email == req.Email))
-                return Conflict(new { message = "An account with this email already exists." });
-
-            emp.User = new User
-            {
-                FullName = req.FullName,
-                Email = req.Email!,
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword(req.Password!),
-                Role = roleType,
-                IsActive = true,
-                MustChangePassword = true // admin-assigned password — they set their own on first login
-            };
+            emp.PasswordHash = BCrypt.Net.BCrypt.HashPassword(req.Password!);
+            emp.MustChangePassword = true; // admin-assigned password — they set their own on first login
         }
 
         _db.Employees.Add(emp);
-        await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync(); // need emp.EmployeeId before the token can embed it
 
-        if (emp.User != null)
+        if (LoginRoles.Contains(roleType))
         {
-            emp.User.JwtToken = _jwt.GenerateToken(emp.User);
+            emp.JwtToken = _jwt.GenerateToken(emp);
             await _db.SaveChangesAsync();
         }
 
@@ -154,7 +147,7 @@ public class EmployeesController : ControllerBase
     [Authorize(Roles = "HR,Admin,SuperAdmin")]
     public async Task<IActionResult> Update(int id, EmployeeUpsertRequest req)
     {
-        var emp = await _db.Employees.Include(e => e.User).FirstOrDefaultAsync(e => e.EmployeeId == id);
+        var emp = await _db.Employees.FirstOrDefaultAsync(e => e.EmployeeId == id);
         if (emp == null) return NotFound();
 
         var callerRank = CallerRoleRank();
@@ -165,8 +158,15 @@ public class EmployeesController : ControllerBase
         if (RoleRank.TryGetValue(roleType, out var newRoleRank) && newRoleRank > callerRank)
             return StatusCode(403, new { message = $"You don't have permission to assign the {roleType} role." });
 
-        var loginError = ValidateLoginRequirements(roleType, req.Password, req.Email, hasExistingLogin: emp.User != null);
+        var hasExistingLogin = emp.PasswordHash != null;
+        var loginError = ValidateLoginRequirements(roleType, req.Password, req.Email, hasExistingLogin);
         if (loginError != null) return BadRequest(new { message = loginError });
+
+        if (LoginRoles.Contains(roleType) && !hasExistingLogin
+            && await _db.Employees.AnyAsync(e => e.Email == req.Email && e.PasswordHash != null && e.EmployeeId != id))
+            return Conflict(new { message = "An account with this email already exists." });
+
+        var roleChanged = emp.RoleType != roleType;
 
         emp.Type = req.Type;
         emp.FullName = req.FullName;
@@ -190,55 +190,35 @@ public class EmployeesController : ControllerBase
 
         if (LoginRoles.Contains(roleType))
         {
-            if (emp.User == null)
+            if (!hasExistingLogin)
             {
                 // Elevating a plain "User" employee to a login-capable role for the first time.
-                if (await _db.Users.AnyAsync(u => u.Email == req.Email))
-                    return Conflict(new { message = "An account with this email already exists." });
-
-                var newUser = new User
-                {
-                    FullName = req.FullName,
-                    Email = req.Email!,
-                    PasswordHash = BCrypt.Net.BCrypt.HashPassword(req.Password!),
-                    Role = roleType,
-                    IsActive = true,
-                    MustChangePassword = true // admin-assigned password — they set their own on first login
-                };
-                _db.Users.Add(newUser);
-                await _db.SaveChangesAsync(); // need newUser.UserId before linking
-                newUser.JwtToken = _jwt.GenerateToken(newUser);
-                emp.UserId = newUser.UserId;
+                emp.PasswordHash = BCrypt.Net.BCrypt.HashPassword(req.Password!);
+                emp.MustChangePassword = true; // admin-assigned password — they set their own on first login
+                emp.JwtToken = _jwt.GenerateToken(emp);
             }
             else
             {
-                // Already has a login — keep it in sync, reactivate if it had been
-                // deactivated by a previous demotion to "User", and only touch the
-                // password if one was actually provided (blank = keep existing password).
-                var roleChanged = emp.User.Role != roleType;
-                emp.User.FullName = req.FullName;
-                emp.User.Email = req.Email ?? emp.User.Email;
-                emp.User.Role = roleType;
-                emp.User.IsActive = true;
+                // Already has a login — only touch the password if one was actually
+                // provided (blank = keep existing password).
                 if (!string.IsNullOrWhiteSpace(req.Password))
                 {
-                    emp.User.PasswordHash = BCrypt.Net.BCrypt.HashPassword(req.Password);
-                    emp.User.MustChangePassword = true; // admin reset it — they set their own again on next login
+                    emp.PasswordHash = BCrypt.Net.BCrypt.HashPassword(req.Password);
+                    emp.MustChangePassword = true; // admin reset it — they set their own again on next login
                 }
                 if (roleChanged)
                 {
                     // Role is embedded in the JWT itself — an old token would keep
                     // claiming the previous role until a fresh one is issued.
-                    emp.User.JwtToken = _jwt.GenerateToken(emp.User);
+                    emp.JwtToken = _jwt.GenerateToken(emp);
                 }
             }
         }
-        else if (emp.User != null)
-        {
-            // Demoted back to plain "User" — deactivate the login rather than delete it,
-            // consistent with how employee records themselves are soft-deleted, not erased.
-            emp.User.IsActive = false;
-        }
+        // Demoted back to plain "User": nothing to clean up. Login itself already
+        // rejects RoleType == "User" regardless of whether password_hash is still
+        // set, and if they're re-promoted later that dormant hash lets them skip
+        // re-entering a password — same behavior as before, just no separate
+        // "deactivated" flag needed.
 
         await _db.SaveChangesAsync();
         return NoContent();
