@@ -17,7 +17,9 @@ public class AttendanceController : ControllerBase
     public AttendanceController(AppDbContext db) => _db = db;
 
     [HttpGet]
-    public async Task<IActionResult> GetAll([FromQuery] DateOnly? date, [FromQuery] int? employeeId)
+    public async Task<IActionResult> GetAll(
+        [FromQuery] DateOnly? date, [FromQuery] int? employeeId,
+        [FromQuery] DateOnly? fromDate, [FromQuery] DateOnly? toDate)
     {
         var query = _db.AttendanceEntries
             .Include(a => a.Employee)
@@ -26,6 +28,8 @@ public class AttendanceController : ControllerBase
             .AsQueryable();
 
         if (date.HasValue) query = query.Where(a => a.AttendanceDate == date.Value);
+        if (fromDate.HasValue) query = query.Where(a => a.AttendanceDate >= fromDate.Value);
+        if (toDate.HasValue) query = query.Where(a => a.AttendanceDate <= toDate.Value);
         if (employeeId.HasValue) query = query.Where(a => a.EmployeeId == employeeId.Value);
 
         var result = await query

@@ -5,19 +5,64 @@ import Topbar from '../components/Topbar.jsx'
 
 function fmt(m){const n=Number(m||0);return `${Math.floor(n/60)}h ${String(n%60).padStart(2,'0')}m`}
 
+function monthRange(monthStr){
+  const [y,m]=monthStr.split('-').map(Number)
+  const from=`${monthStr}-01`
+  const lastDay=new Date(y,m,0).getDate()
+  const to=`${monthStr}-${String(lastDay).padStart(2,'0')}`
+  return [from,to]
+}
+
+function aggregateByEmployee(entries){
+  const map={}
+  entries.forEach(e=>{
+    if(!map[e.employeeId]) map[e.employeeId]={employeeId:e.employeeId,employeeName:e.employeeName,empCode:e.empCode,present:0,absent:0,other:0,daysRecorded:0,totalWork:0,totalOt:0}
+    const m=map[e.employeeId]
+    m.daysRecorded++
+    if(e.attendanceType==='PRESENT') m.present++
+    else if(e.attendanceType==='ABSENT') m.absent++
+    else m.other++
+    m.totalWork+=e.actualWorkMinutes
+    m.totalOt+=e.approvedOtMinutes
+  })
+  return Object.values(map).sort((x,y)=>x.employeeName.localeCompare(y.employeeName))
+}
+
 export default function Dashboard() {
   const [stats,setStats]=useState(null), [error,setError]=useState('')
   const navigate=useNavigate()
 
+  const [employees,setEmployees]=useState([])
+  const [month,setMonth]=useState(()=>new Date().toISOString().slice(0,7))
+  const [employeeId,setEmployeeId]=useState('')
+  const [attEntries,setAttEntries]=useState([])
+  const [attError,setAttError]=useState('')
+
   useEffect(()=>{
     api.get('/dashboard/stats').then(r=>setStats(r.data))
       .catch(()=>setError('Could not load dashboard stats. Is the API running?'))
+    api.get('/employees').then(r=>setEmployees(r.data)).catch(()=>{})
   },[])
+
+  useEffect(()=>{
+    const [fromDate,toDate]=monthRange(month)
+    const params={fromDate,toDate}
+    if(employeeId) params.employeeId=employeeId
+    api.get('/attendance',{params}).then(r=>setAttEntries(r.data))
+      .catch(()=>setAttError('Could not load attendance for this month.'))
+  },[month,employeeId])
 
   const maxDept=stats?.byDepartment?.length?Math.max(...stats.byDepartment.map(d=>d.count)):1
   const maxRole=stats?.byRole?.length?Math.max(...stats.byRole.map(r=>r.count)):1
   const maxShift=stats?.byShift?.length?Math.max(...stats.byShift.map(s=>s.count)):1
   const a=stats?.todayAttendance
+  const employeeSummaries=aggregateByEmployee(attEntries)
+  const selectedTotals=employeeId ? {
+    present: attEntries.filter(e=>e.attendanceType==='PRESENT').length,
+    absent: attEntries.filter(e=>e.attendanceType==='ABSENT').length,
+    totalWork: attEntries.reduce((s,e)=>s+e.actualWorkMinutes,0),
+    totalOt: attEntries.reduce((s,e)=>s+e.approvedOtMinutes,0),
+  } : null
 
   return <>
     <Topbar crumbs={<b>Dashboard</b>}/>
@@ -71,6 +116,72 @@ export default function Dashboard() {
           {stats.byShift.length === 0
             ? <p style={{fontSize:12.5,color:'var(--text-faint)'}}>No shifts assigned yet.</p>
             : stats.byShift.map(s=><div className="bar-row" key={s.shift}><div className="lbl">{s.shift}</div><div className="bar-track"><div className="bar-fill" style={{width:`${Math.round((s.count/maxShift)*100)}%`}}/></div><div className="val">{s.count}</div></div>)}
+        </div>
+      </div>
+
+      <div className="card" style={{marginTop:20}}>
+        <div className="section-head-inline">
+          <div><h3>Attendance Explorer</h3><p className="card-sub">Browse attendance by month, across everyone or one employee at a time</p></div>
+        </div>
+        <div className="form-grid two" style={{marginBottom:20}}>
+          <div className="field"><label>Month</label><input type="month" value={month} onChange={e=>setMonth(e.target.value)} /></div>
+          <div className="field"><label>Employee</label>
+            <select value={employeeId} onChange={e=>setEmployeeId(e.target.value)}>
+              <option value="">All Employees</option>
+              {employees.map(emp=><option key={emp.employeeId} value={emp.employeeId}>{emp.fullName} — {emp.empCode}</option>)}
+            </select>
+          </div>
+        </div>
+
+        {attError && <div className="auth-error" style={{marginBottom:16}}>{attError}</div>}
+
+        {employeeId && selectedTotals && (
+          <div className="kpi-grid" style={{marginBottom:20}}>
+            <div className="kpi-card"><div className="lbl">Days Present</div><div className="num">{selectedTotals.present}</div></div>
+            <div className="kpi-card"><div className="lbl">Days Absent</div><div className="num">{selectedTotals.absent}</div></div>
+            <div className="kpi-card"><div className="lbl">Total Work</div><div className="num" style={{fontSize:20}}>{fmt(selectedTotals.totalWork)}</div></div>
+            <div className="kpi-card"><div className="lbl">Total Approved OT</div><div className="num" style={{fontSize:20}}>{fmt(selectedTotals.totalOt)}</div></div>
+          </div>
+        )}
+
+        <div className="table-scroll">
+          <table className="emp-table">
+            {employeeId ? (
+              <>
+                <thead><tr><th>Date</th><th>Status</th><th>Shift</th><th>Actual Work</th><th>Approved OT</th></tr></thead>
+                <tbody>
+                  {attEntries.length===0
+                    ? <tr className="empty-row"><td colSpan="5">No attendance recorded for this employee this month.</td></tr>
+                    : attEntries.slice().sort((a,b)=>a.attendanceDate.localeCompare(b.attendanceDate)).map(e=>(
+                      <tr key={e.attendanceId}>
+                        <td>{e.attendanceDate}</td>
+                        <td>{e.attendanceType}</td>
+                        <td>{e.shiftName}</td>
+                        <td>{fmt(e.actualWorkMinutes)}</td>
+                        <td><b>{fmt(e.approvedOtMinutes)}</b></td>
+                      </tr>
+                    ))}
+                </tbody>
+              </>
+            ) : (
+              <>
+                <thead><tr><th>Employee</th><th>Days Present</th><th>Days Absent</th><th>Total Work</th><th>Total Approved OT</th></tr></thead>
+                <tbody>
+                  {employeeSummaries.length===0
+                    ? <tr className="empty-row"><td colSpan="5">No attendance recorded for this month yet.</td></tr>
+                    : employeeSummaries.map(s=>(
+                      <tr key={s.employeeId}>
+                        <td><b>{s.employeeName}</b><div className="meta">{s.empCode}</div></td>
+                        <td>{s.present}</td>
+                        <td>{s.absent}</td>
+                        <td>{fmt(s.totalWork)}</td>
+                        <td><b>{fmt(s.totalOt)}</b></td>
+                      </tr>
+                    ))}
+                </tbody>
+              </>
+            )}
+          </table>
         </div>
       </div>
     </>}
