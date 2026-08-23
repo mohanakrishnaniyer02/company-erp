@@ -1,31 +1,39 @@
-# Company HR — ERP Starter (React + .NET API + PostgreSQL)
+# Company HR — ERP System (React + .NET + PostgreSQL)
 
-This is a working scaffold matching the UI you approved: JWT auth with 4 roles,
-a Dashboard, an Employee list with Edit/Delete, and an Employee profile with
-Basic/Bank/Proof/Address/Education/Shift sub-pages.
+An internal HR / attendance / payroll-support system: employee records,
+department and shift masters, daily attendance entry with automatic OT
+calculation, and a role-based dashboard.
 
 ```
 erp-system/
-├── database/schema.sql        ← run this first
-├── backend/ErpApi/            ← ASP.NET Core 8 Web API
-└── frontend/erp-ui/           ← React (Vite)
+├── database/
+│   ├── schema.sql          ← fresh install: run this alone, nothing else
+│   └── migrations/         ← only for upgrading an existing database
+├── backend/ErpApi/         ← ASP.NET Core 8 Web API
+└── frontend/erp-ui/        ← React (Vite)
 ```
 
-> **Prefer clicking over typing?** See **[SETUP-GUI.md](./SETUP-GUI.md)** for
-> the same setup done entirely through pgAdmin, Visual Studio, and VS Code —
-> no terminal commands. The steps below use the CLI instead.
+> **Prefer clicking over typing?** See [SETUP-GUI.md](./SETUP-GUI.md) for the
+> same setup done entirely through pgAdmin, Visual Studio, and VS Code.
+>
+> **Want a live demo URL instead of running this locally?** See
+> [DEPLOYMENT.md](./DEPLOYMENT.md) for deploying to Render.com.
+
+---
 
 ## 1. Database
 
-1. Install PostgreSQL (or run `docker run -e POSTGRES_PASSWORD=postgres -p 5432:5432 -d postgres:16`).
-2. Create the database and load the schema:
-   ```bash
-   createdb company_erp
-   psql -d company_erp -f database/schema.sql
-   ```
-   This creates all tables and seeds 5 sample employees, 3 companies, 2 shift
-   templates, and one login (`admin@company.co`) — see note below on the seeded
-   password hash.
+**Fresh install** (no existing data): run `database/schema.sql` once. That's
+it — it creates every table and seeds:
+- 3 companies, 4 locations, 4 departments, 2 shift templates (Day/Night)
+- 8 attendance status types (Present, Absent, Half Day, Weekly Off, Holiday,
+  Paid Leave, Unpaid Leave, On Duty) and their OT rounding rules
+- 5 sample employees
+- **One working bootstrap login** (see [Authentication](#4-authentication--roles) below)
+
+**Upgrading an existing database**: run every file in
+`database/migrations/`, in filename order (they're dated). Each is
+idempotent-safe to re-run and documents what it does at the top.
 
 ## 2. Backend (.NET 8 Web API)
 
@@ -36,26 +44,23 @@ cd backend/ErpApi
 dotnet restore
 ```
 
-Edit `appsettings.json`:
-- `ConnectionStrings:Default` → your Postgres connection string
-- `Jwt:Key` → replace with a real random 32+ character secret
-- `Cors:AllowedOrigin` → leave as `http://localhost:5173` for local dev
+Set these via **User Secrets** (right-click the project in Visual Studio →
+Manage User Secrets) rather than editing `appsettings.json` directly:
+```json
+{
+  "Jwt:Key": "<a real random 32+ character secret>",
+  "ConnectionStrings:Default": "Host=localhost;Port=5432;Database=company_erp;Username=postgres;Password=<your password>"
+}
+```
+The app **refuses to start** if `Jwt:Key` is still the placeholder value —
+this is intentional, not a bug.
 
-Run it:
 ```bash
 dotnet run
 ```
-By default this listens on `http://localhost:5205` (check the console output
-for the exact port — `launchSettings.json` isn't included, so note the port
-printed on startup and update the frontend `.env` if it differs).
-
-Swagger UI is available at `http://localhost:5205/swagger` for testing
-endpoints directly (Authorize with `Bearer <token>` after logging in).
-
-**About the seeded admin login:** the password hash in `schema.sql` is a
-placeholder. Easiest path — just use the **Sign up** screen once the frontend
-is running to create your own Admin/SuperAdmin account; that goes through the
-real BCrypt hashing path and avoids any doubt about the seed hash.
+Listens on `http://localhost:5205` by default (see
+`Properties/launchSettings.json`). Swagger UI is at
+`http://localhost:5205/swagger`.
 
 ## 3. Frontend (React + Vite)
 
@@ -69,50 +74,59 @@ npm run dev
 Opens at `http://localhost:5173`. Check `.env` — `VITE_API_BASE_URL` must
 match the port your API is actually running on.
 
-## 4. Try it end-to-end
+## 4. Authentication & roles
 
-1. Open `http://localhost:5173` → **Sign up** → pick a role from the dropdown
-   (this is now a `<select>`, not the pill picker from the earlier mockup) →
-   you're logged in and redirected to the Dashboard.
-2. **Dashboard** — KPI cards and the department chart are computed live by
-   `GET /api/dashboard/stats` from whatever's in the `employees` table.
-3. **Employees** — table view, search box, Regular/Contract filter chips,
-   ✎ Edit and 🗑 Delete per row.
-4. **+ Add Employee** — opens the same tabbed profile form in "add" mode;
-   Basic Details + Bank Details save together on **Save Changes**. Proof,
-   Address and Education tabs need the employee to exist first (their inputs
-   explain this), so add the employee, then reopen it via Edit to attach
-   those.
-5. **Delete** on the list is a **soft delete** — it sets the employee to
-   `Inactive` and stamps `date_of_leaving`, it does not remove the row from
-   the database. That's deliberate: HR systems need to retain historical
-   records. A hard delete exists at `DELETE /api/employees/{id}?hard=true`
-   but is restricted to the `SuperAdmin` role.
+**There is no public signup page.** Every login-capable account is an
+**Employee record** — login credentials (`password_hash`, `jwt_token`,
+`must_change_password`) live directly on the `employees` table, not a
+separate `users` table. A plain "User"-role employee simply has no password
+set and cannot log in at all.
 
-## What's stubbed vs fully wired
+**Getting your first account**: `schema.sql` seeds exactly one working
+SuperAdmin so you're never locked out of a fresh install:
+```
+Email:    superadmin@company.co
+Password: ChangeMe123!
+```
+Logging in with this forces an immediate password change before anything
+else is reachable — this is deliberate, not a bug.
 
-Fully wired: Auth (signup/login/JWT), Employees (list/create/update/soft-delete),
-Bank Details (upsert), Proof (add/delete), Address (upsert per type),
-Education (add/delete), Dashboard stats, lookups (companies/departments/locations).
+**Creating further accounts**: an existing HR/Admin/SuperAdmin opens
+**Add Employee** (or edits an existing one), sets **Role Type** to
+HR/Admin/SuperAdmin, and a **Password** field appears. That password is
+temporary too — the new person is forced to change it on their first login.
 
-Stubbed (schema + API endpoints exist, UI picker not yet built): the
-**Employment/Shift** tab. `GET/POST /api/shift-templates` and
-`GET/POST /api/employees/{id}/shift-assignment` are ready — the two seeded
-templates (Day Shift / Night Shift) are sitting in the database — it just
-needs a dropdown wired into `EmployeeProfile.jsx` to assign one, which is a
-natural next increment once you've confirmed the rest works end-to-end.
+**Role hierarchy** — each role can create/edit accounts at its own level or
+below, never above:
+```
+SuperAdmin > Admin > HR > User
+```
+A HR user cannot create or edit an Admin or SuperAdmin record, even via a
+direct API call — this is enforced server-side, not just hidden in the UI.
 
-## Auth / roles notes
+**JWT behavior**: a token is generated **once**, when login access is
+granted, and reused for every subsequent login by that person — not
+regenerated each time. It only gets reissued if that person's role changes
+later (since role is embedded in the token). There is no refresh-token flow.
+Token lifetime is set in `appsettings.json` under `Jwt:ExpiryMinutes`
+(currently ~1 year, since there's no refresh flow to fall back on).
 
-- Roles: `User`, `HR`, `Admin`, `SuperAdmin`. Write endpoints (create/update/
-  delete employees and sub-records) require `HR`, `Admin`, or `SuperAdmin`;
-  plain `User` accounts are read-only. Adjust the `[Authorize(Roles=...)]`
-  attributes in the controllers if you want different boundaries.
-- Per your spec, there's no refresh-token flow — a JWT is generated **once, at
-  signup**, and every login after that reuses the same stored token rather
-  than minting a new one. The token's own expiry is set to 1 year
-  (`ExpiryMinutes` in `appsettings.json`), long enough that this "same token
-  forever" behavior works without you needing to handle expiry/refresh in
-  the normal course of using the app.
-- CORS is locked to `http://localhost:5173` — update `Cors:AllowedOrigin` if
-  you serve the frontend elsewhere.
+## 5. What's in the app
+
+| Module | What it does |
+|---|---|
+| **Employees** | List, search, filter by Regular/Contract and Role Type. Add/Edit covers Basic Details (incl. Role Type, Department, Shift), Bank Details, Proof/Documents, Address, Education |
+| **Departments** | Master data: name, OT allowed, min/max OT time, required work hours per day. Feeds the Department dropdown on Employee |
+| **Shifts** | Master data: timing, grace/late/early-out rules, minimum/half-day/full-day minutes, OT rules, night-shift flag. Feeds the Shift dropdown on Employee |
+| **Daily Attendance Entry** | HR/Admin/SuperAdmin record each employee's day: shift, attendance type, and an unlimited number of In/Out punch pairs (add as many as actually happened — no fixed cap). Automatically calculates actual work, required work (from Department), calculated OT, and rounded OT (floor to nearest 30 minutes); Approved OT is editable with a required reason if it differs from the rounded value |
+| **Dashboard** | Headcount KPIs, live department/role/shift breakdowns, and an **Attendance Explorer** — pick a month and browse either a company-wide summary or one employee's full day-by-day record |
+
+All time values are stored in minutes internally and displayed in hours for
+readability.
+
+## 6. Deleting or deactivating an employee
+
+Delete is a **soft delete** by default — sets the employee `Inactive` and
+stamps a leaving date, doesn't remove the row (HR systems need to retain
+historical records). A hard delete exists (`DELETE /api/employees/{id}?hard=true`)
+but is restricted to SuperAdmin only.
