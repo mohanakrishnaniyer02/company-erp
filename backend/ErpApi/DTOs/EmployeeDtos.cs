@@ -2,11 +2,12 @@ namespace ErpApi.DTOs;
 
 public record EmployeeListItem(
     int EmployeeId, string EmpCode, string FullName, string? Designation,
-    string? Department, string Type, string Status, string? Location, string RoleType, int? ShiftId, string? ShiftName);
+    string? Department, string Type, string Status, string? Location, string RoleType, int? ShiftId, string? ShiftName,
+    bool HasLogin);
 
 public record EmployeeUpsertRequest(
     string EmpCode, string Type, string FullName, string? Designation,
-    int? DepartmentId, int? CompanyId, int? ManagerId, int? ShiftId, string? RoleType,
+    int? DepartmentId, int? CompanyId, int? ManagerId, int? ShiftId, string? RoleType, string? Password,
     DateOnly? DateOfJoining, DateOnly? DateOfBirth, DateOnly? DateOfLeaving, string? LeavingComments,
     int? LocationId, string? Email, string? PhoneNumber, string? PhotoUrl, string? MaritalStatus);
 

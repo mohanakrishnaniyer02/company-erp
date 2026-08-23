@@ -6,8 +6,10 @@ import Topbar from '../components/Topbar.jsx'
 const emptyForm = {
   empCode: '', type: 'Regular', fullName: '', designation: '', departmentId: '', companyId: '', managerId: '',
   dateOfJoining: '', dateOfBirth: '', dateOfLeaving: '', leavingComments: '',
-  locationId: '', email: '', phoneNumber: '', maritalStatus: '', roleType: 'User', shiftId: ''
+  locationId: '', email: '', phoneNumber: '', maritalStatus: '', roleType: 'User', shiftId: '', password: ''
 }
+
+const LOGIN_ROLES = ['HR', 'Admin', 'SuperAdmin']
 
 export default function EmployeeProfile({ mode }) {
   const { id } = useParams()
@@ -24,6 +26,7 @@ export default function EmployeeProfile({ mode }) {
   const [addrTab, setAddrTab] = useState('Current')
   const [education, setEducation] = useState([])
   const [newEdu, setNewEdu] = useState({ institutionName:'', degree:'', completionDate:'' })
+  const [hasLogin, setHasLogin] = useState(false)
   const [error, setError] = useState('')
 
   useEffect(() => {
@@ -38,11 +41,12 @@ export default function EmployeeProfile({ mode }) {
     if (mode === 'edit' && id) {
       api.get(`/employees/${id}`).then(res => {
         const e = res.data
+        setHasLogin(!!e.userId)
         setForm({
           empCode: e.empCode,
           type: e.type, fullName: e.fullName, designation: e.designation || '',
           departmentId: e.departmentId || '', companyId: e.companyId || '', managerId: e.managerId || '',
-          shiftId: e.shiftId || '', roleType: e.roleType || 'User',
+          shiftId: e.shiftId || '', roleType: e.roleType || 'User', password: '',
           dateOfJoining: e.dateOfJoining || '', dateOfBirth: e.dateOfBirth || '', dateOfLeaving: e.dateOfLeaving || '',
           leavingComments: e.leavingComments || '', locationId: e.locationId || '',
           email: e.email || '', phoneNumber: e.phoneNumber || '', maritalStatus: e.maritalStatus || ''
@@ -198,6 +202,22 @@ export default function EmployeeProfile({ mode }) {
                     <option>User</option><option>HR</option><option>Admin</option><option>SuperAdmin</option>
                   </select>
                 </div>
+                {LOGIN_ROLES.includes(form.roleType) && (
+                  <div className="field">
+                    <label>{hasLogin ? 'Reset Password (optional)' : 'Password'}{!hasLogin && <span className="req"> *</span>}</label>
+                    <input
+                      type="password"
+                      value={form.password}
+                      onChange={e => set('password', e.target.value)}
+                      placeholder={hasLogin ? 'Leave blank to keep current password' : 'Min. 8 characters, letters + numbers'}
+                    />
+                    <small className="field-help">
+                      {hasLogin
+                        ? 'This person already has login access — only fill this in to change their password.'
+                        : `This grants ${form.fullName || 'this employee'} a real login as ${form.roleType}.`}
+                    </small>
+                  </div>
+                )}
                 <div className="field"><label>Shift</label>
                   <select value={form.shiftId} onChange={e => set('shiftId', e.target.value)}>
                     <option value="">Select shift…</option>

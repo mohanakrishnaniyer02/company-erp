@@ -84,6 +84,7 @@ public class AppDbContext : DbContext
             e.Property(x => x.ManagerId).HasColumnName("manager_id");
             e.Property(x => x.ShiftId).HasColumnName("shift_id");
             e.Property(x => x.RoleType).HasColumnName("role_type");
+            e.Property(x => x.UserId).HasColumnName("user_id");
             e.Property(x => x.DateOfJoining).HasColumnName("date_of_joining");
             e.Property(x => x.DateOfBirth).HasColumnName("date_of_birth");
             e.Property(x => x.DateOfLeaving).HasColumnName("date_of_leaving");
@@ -103,6 +104,8 @@ public class AppDbContext : DbContext
             e.HasOne(x => x.LocationRef).WithMany().HasForeignKey(x => x.LocationId);
             e.HasOne(x => x.Manager).WithMany().HasForeignKey(x => x.ManagerId);
             e.HasOne(x => x.Shift).WithMany().HasForeignKey(x => x.ShiftId);
+            e.HasOne(x => x.User).WithOne().HasForeignKey<Employee>(x => x.UserId);
+            e.HasIndex(x => x.UserId).IsUnique();
         });
 
         modelBuilder.Entity<BankDetail>(e =>

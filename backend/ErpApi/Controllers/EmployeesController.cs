@@ -1,6 +1,7 @@
 using ErpApi.Data;
 using ErpApi.DTOs;
 using ErpApi.Models;
+using ErpApi.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -13,7 +14,14 @@ namespace ErpApi.Controllers;
 public class EmployeesController : ControllerBase
 {
     private readonly AppDbContext _db;
-    public EmployeesController(AppDbContext db) => _db = db;
+    private readonly IJwtService _jwt;
+    private static readonly string[] LoginRoles = { "HR", "Admin", "SuperAdmin" };
+
+    public EmployeesController(AppDbContext db, IJwtService jwt)
+    {
+        _db = db;
+        _jwt = jwt;
+    }
 
     // GET /api/employees?search=&type=&departmentId=
     [HttpGet]
@@ -36,7 +44,8 @@ public class EmployeesController : ControllerBase
                 e.EmployeeId, e.EmpCode, e.FullName, e.Designation,
                 e.Department != null ? e.Department.DepartmentName : null,
                 e.Type, e.Status, e.LocationRef != null ? e.LocationRef.LocationName : null,
-                e.RoleType, e.ShiftId, e.Shift != null ? e.Shift.ShiftName : null))
+                e.RoleType, e.ShiftId, e.Shift != null ? e.Shift.ShiftName : null,
+                e.UserId != null))
             .ToListAsync();
 
         return Ok(result);
@@ -71,6 +80,10 @@ public class EmployeesController : ControllerBase
         if (await _db.Employees.AnyAsync(e => e.EmpCode == req.EmpCode))
             return Conflict(new { message = $"Employee ID '{req.EmpCode}' is already in use — pick a different one." });
 
+        var roleType = string.IsNullOrWhiteSpace(req.RoleType) ? "User" : req.RoleType!;
+        var loginError = ValidateLoginRequirements(roleType, req.Password, req.Email, hasExistingLogin: false);
+        if (loginError != null) return BadRequest(new { message = loginError });
+
         var emp = new Employee
         {
             EmpCode = req.EmpCode,
@@ -81,7 +94,7 @@ public class EmployeesController : ControllerBase
             CompanyId = req.CompanyId,
             ManagerId = req.ManagerId,
             ShiftId = req.ShiftId,
-            RoleType = string.IsNullOrWhiteSpace(req.RoleType) ? "User" : req.RoleType!,
+            RoleType = roleType,
             DateOfJoining = req.DateOfJoining,
             DateOfBirth = req.DateOfBirth,
             DateOfLeaving = req.DateOfLeaving,
@@ -93,8 +106,31 @@ public class EmployeesController : ControllerBase
             MaritalStatus = req.MaritalStatus,
             Status = req.DateOfLeaving.HasValue ? "Inactive" : "Active"
         };
+
+        if (LoginRoles.Contains(roleType))
+        {
+            if (await _db.Users.AnyAsync(u => u.Email == req.Email))
+                return Conflict(new { message = "An account with this email already exists." });
+
+            emp.User = new User
+            {
+                FullName = req.FullName,
+                Email = req.Email!,
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword(req.Password!),
+                Role = roleType,
+                IsActive = true
+            };
+        }
+
         _db.Employees.Add(emp);
         await _db.SaveChangesAsync();
+
+        if (emp.User != null)
+        {
+            emp.User.JwtToken = _jwt.GenerateToken(emp.User);
+            await _db.SaveChangesAsync();
+        }
+
         return CreatedAtAction(nameof(GetById), new { id = emp.EmployeeId }, emp);
     }
 
@@ -103,8 +139,12 @@ public class EmployeesController : ControllerBase
     [Authorize(Roles = "HR,Admin,SuperAdmin")]
     public async Task<IActionResult> Update(int id, EmployeeUpsertRequest req)
     {
-        var emp = await _db.Employees.FindAsync(id);
+        var emp = await _db.Employees.Include(e => e.User).FirstOrDefaultAsync(e => e.EmployeeId == id);
         if (emp == null) return NotFound();
+
+        var roleType = string.IsNullOrWhiteSpace(req.RoleType) ? "User" : req.RoleType!;
+        var loginError = ValidateLoginRequirements(roleType, req.Password, req.Email, hasExistingLogin: emp.User != null);
+        if (loginError != null) return BadRequest(new { message = loginError });
 
         emp.Type = req.Type;
         emp.FullName = req.FullName;
@@ -113,7 +153,7 @@ public class EmployeesController : ControllerBase
         emp.CompanyId = req.CompanyId;
         emp.ManagerId = req.ManagerId;
         emp.ShiftId = req.ShiftId;
-        emp.RoleType = string.IsNullOrWhiteSpace(req.RoleType) ? "User" : req.RoleType!;
+        emp.RoleType = roleType;
         emp.DateOfJoining = req.DateOfJoining;
         emp.DateOfBirth = req.DateOfBirth;
         emp.DateOfLeaving = req.DateOfLeaving;
@@ -126,8 +166,62 @@ public class EmployeesController : ControllerBase
         emp.Status = req.DateOfLeaving.HasValue ? "Inactive" : "Active";
         emp.UpdatedAt = DateTime.UtcNow;
 
+        if (LoginRoles.Contains(roleType))
+        {
+            if (emp.User == null)
+            {
+                // Elevating a plain "User" employee to a login-capable role for the first time.
+                if (await _db.Users.AnyAsync(u => u.Email == req.Email))
+                    return Conflict(new { message = "An account with this email already exists." });
+
+                var newUser = new User
+                {
+                    FullName = req.FullName,
+                    Email = req.Email!,
+                    PasswordHash = BCrypt.Net.BCrypt.HashPassword(req.Password!),
+                    Role = roleType,
+                    IsActive = true
+                };
+                _db.Users.Add(newUser);
+                await _db.SaveChangesAsync(); // need newUser.UserId before linking
+                newUser.JwtToken = _jwt.GenerateToken(newUser);
+                emp.UserId = newUser.UserId;
+            }
+            else
+            {
+                // Already has a login — keep it in sync, reactivate if it had been
+                // deactivated by a previous demotion to "User", and only touch the
+                // password if one was actually provided (blank = keep existing password).
+                emp.User.FullName = req.FullName;
+                emp.User.Email = req.Email ?? emp.User.Email;
+                emp.User.Role = roleType;
+                emp.User.IsActive = true;
+                if (!string.IsNullOrWhiteSpace(req.Password))
+                    emp.User.PasswordHash = BCrypt.Net.BCrypt.HashPassword(req.Password);
+            }
+        }
+        else if (emp.User != null)
+        {
+            // Demoted back to plain "User" — deactivate the login rather than delete it,
+            // consistent with how employee records themselves are soft-deleted, not erased.
+            emp.User.IsActive = false;
+        }
+
         await _db.SaveChangesAsync();
         return NoContent();
+    }
+
+    private static string? ValidateLoginRequirements(string roleType, string? password, string? email, bool hasExistingLogin)
+    {
+        if (!LoginRoles.Contains(roleType)) return null;
+        if (string.IsNullOrWhiteSpace(email))
+            return "Email is required to grant HR/Admin/SuperAdmin access.";
+        if (!hasExistingLogin && string.IsNullOrWhiteSpace(password))
+            return "A password is required to grant HR/Admin/SuperAdmin access.";
+        if (!string.IsNullOrWhiteSpace(password) &&
+            (password.Length < 8 || !password.Any(char.IsDigit) || !password.Any(char.IsLetter)))
+            return "Password must be at least 8 characters and include both letters and numbers.";
+        return null;
     }
 
     // DELETE /api/employees/5 — soft delete (HR record retention). Use ?hard=true for a real delete (SuperAdmin only).

@@ -15,7 +15,7 @@ public class AuthController : ControllerBase
     private readonly AppDbContext _db;
     private readonly IJwtService _jwt;
     private static readonly string[] ValidRoles = { "User", "HR", "Admin", "SuperAdmin" };
-    private static readonly string[] SelfServiceRoles = { "User", "HR" };
+    private static readonly string[] SelfServiceRoles = { "HR" }; // "User" can't log in at all now, so self-signup as "User" is a dead end — removed
 
     public AuthController(AppDbContext db, IJwtService jwt)
     {
@@ -40,7 +40,7 @@ public class AuthController : ControllerBase
         {
             return BadRequest(new
             {
-                message = "Self-service signup is limited to the User or HR roles. " +
+                message = "Self-service signup is limited to the HR role. " +
                            "Ask an existing Admin or SuperAdmin to create Admin/SuperAdmin accounts " +
                            "via POST /api/auth/create-user."
             });
@@ -106,6 +106,9 @@ public class AuthController : ControllerBase
         var user = await _db.Users.FirstOrDefaultAsync(u => u.Email == req.Email && u.IsActive);
         if (user == null || !BCrypt.Net.BCrypt.Verify(req.Password, user.PasswordHash))
             return Unauthorized(new { message = "Invalid email or password." });
+
+        if (user.Role == "User")
+            return StatusCode(403, new { message = "This account does not have application access. Contact an Admin to be granted HR, Admin, or SuperAdmin access." });
 
         var token = user.JwtToken;
         if (string.IsNullOrEmpty(token))

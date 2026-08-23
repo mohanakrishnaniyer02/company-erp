@@ -17,7 +17,7 @@ export default function Login() {
   const [suEmail, setSuEmail] = useState('')
   const [suPassword, setSuPassword] = useState('')
   const [suConfirm, setSuConfirm] = useState('')
-  const [role, setRole] = useState('User')   // <-- role as a dropdown now
+  const [role, setRole] = useState('HR')   // "User" removed from self-signup — see note below
 
   async function handleLogin(e) {
     e.preventDefault()
@@ -95,14 +95,13 @@ export default function Login() {
               <div className="field">
                 <label>Role</label>
                 <select value={role} onChange={e => setRole(e.target.value)}>
-                  <option value="User">User</option>
                   <option value="HR">HR</option>
                   <option value="Admin">Admin</option>
                   <option value="SuperAdmin">SuperAdmin</option>
                 </select>
               </div>
               <button type="submit" className="btn-primary">Create account →</button>
-              <p className="auth-note">A JWT is generated on signup and stored against your user record for subsequent request authentication. Self-service signup only grants User or HR — Admin/SuperAdmin accounts are created by an existing Admin (the very first account on a fresh system is the one exception).</p>
+              <p className="auth-note">A JWT is generated on signup and stored against your user record for subsequent request authentication. Self-service signup grants HR access — Admin/SuperAdmin accounts are created by an existing Admin (the very first account on a fresh system is the one exception). Plain employee records with no login are created directly from the Employee form instead.</p>
               <p className="auth-switch-line">Already have an account? <a onClick={() => setMode('login')}>Log in</a></p>
             </form>
           )}

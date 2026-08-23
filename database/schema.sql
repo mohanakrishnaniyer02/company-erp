@@ -87,6 +87,7 @@ CREATE TABLE employees (
     shift_id          INT REFERENCES shift_templates(shift_id),
     role_type         VARCHAR(20) NOT NULL DEFAULT 'User'
                       CHECK (role_type IN ('User','HR','Admin','SuperAdmin')),
+    user_id           INT UNIQUE REFERENCES users(user_id),
     date_of_joining   DATE,
     date_of_birth     DATE,
     date_of_leaving   DATE,
