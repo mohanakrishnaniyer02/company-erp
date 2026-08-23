@@ -32,6 +32,21 @@ public class DashboardController : ControllerBase
             .OrderByDescending(d => d.Count)
             .ToList();
 
+        var byRole = employees
+            .GroupBy(e => e.RoleType)
+            .Select(g => new RoleCount(g.Key, g.Count()))
+            .OrderByDescending(r => r.Count)
+            .ToList();
+
+        var byShift = employees
+            .Where(e => e.Shift != null)
+            .GroupBy(e => e.Shift!.ShiftName)
+            .Select(g => new ShiftCount(g.Key, g.Count()))
+            .OrderByDescending(s => s.Count)
+            .ToList();
+
+        var unassignedShiftCount = employees.Count(e => e.ShiftId == null && e.Status == "Active");
+
         var recent = employees
             .OrderByDescending(e => e.DateOfJoining)
             .Take(4)
@@ -59,6 +74,6 @@ public class DashboardController : ControllerBase
             attendance.Sum(a => a.ActualWorkMinutes),
             attendance.Sum(a => a.ApprovedOtMinutes));
 
-        return Ok(new DashboardStats(total, active, contract, byDept, recent, todaySummary));
+        return Ok(new DashboardStats(total, active, contract, byDept, byRole, byShift, unassignedShiftCount, recent, todaySummary));
     }
 }

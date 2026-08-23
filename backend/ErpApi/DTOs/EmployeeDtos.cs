@@ -61,8 +61,12 @@ public record OtRoundingRuleRequest(int FromMinutes, int ToMinutes, int RoundedM
 
 public record DashboardStats(
     int TotalEmployees, int ActiveEmployees, int ContractEmployees,
-    List<DeptCount> ByDepartment, List<EmployeeListItem> RecentJoiners,
+    List<DeptCount> ByDepartment, List<RoleCount> ByRole, List<ShiftCount> ByShift,
+    int UnassignedShiftCount, List<EmployeeListItem> RecentJoiners,
     DashboardAttendance TodayAttendance);
+
+public record RoleCount(string Role, int Count);
+public record ShiftCount(string Shift, int Count);
 
 public record DashboardAttendance(
     string Date, int Present, int Absent, int HalfDay, int PaidLeave,

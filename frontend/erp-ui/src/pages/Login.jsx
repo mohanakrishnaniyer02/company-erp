@@ -39,10 +39,6 @@ export default function Login() {
               <input type="password" required value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••••" />
             </div>
             <button type="submit" className="btn-primary">Log in →</button>
-            <p className="auth-note">
-              Only HR, Admin, and SuperAdmin accounts can access this application. New accounts are created by
-              an existing Admin through the Employee form, not by signing up here.
-            </p>
           </form>
         </div>
       </div>

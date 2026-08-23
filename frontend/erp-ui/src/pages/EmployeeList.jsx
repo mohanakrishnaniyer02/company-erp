@@ -2,8 +2,13 @@ import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../api/client'
 import Topbar from '../components/Topbar.jsx'
+import { useAuth } from '../context/AuthContext.jsx'
+
+const ROLE_RANK = { User: 0, HR: 1, Admin: 2, SuperAdmin: 3 }
+const canManage = (callerRole, targetRole) => (ROLE_RANK[callerRole] ?? 0) >= (ROLE_RANK[targetRole] ?? 0)
 
 export default function EmployeeList() {
+  const { user } = useAuth()
   const [employees, setEmployees] = useState([])
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState('all')
@@ -57,13 +62,15 @@ export default function EmployeeList() {
             <tbody>
               {employees.length === 0 ? (
                 <tr className="empty-row"><td colSpan="9">No employees match this filter.</td></tr>
-              ) : employees.map(e => (
+              ) : employees.map(e => {
+                const editable = canManage(user?.role, e.roleType)
+                return (
                 <tr key={e.employeeId}>
                   <td>
                     <div className="emp-cell">
                       <div className="av">{e.fullName.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase()}</div>
                       <div>
-                        <div className="name" onClick={() => navigate(`/employees/${e.employeeId}`)}>{e.fullName}</div>
+                        <div className={editable ? 'name' : ''} onClick={() => editable && navigate(`/employees/${e.employeeId}`)} style={editable ? undefined : {cursor:'default', color:'var(--text)'}}>{e.fullName}</div>
                         <div className="id">{e.empCode}</div>
                       </div>
                     </div>
@@ -76,13 +83,15 @@ export default function EmployeeList() {
                   <td><span className={'badge ' + e.status.toLowerCase()}>{e.status}</span></td>
                   <td>{e.location}</td>
                   <td>
-                    <div className="row-actions">
-                      <button type="button" className="edit" title="Edit" onClick={() => navigate(`/employees/${e.employeeId}`)}>✎</button>
-                      <button type="button" className="del" title="Delete" onClick={() => handleDelete(e)}>🗑</button>
-                    </div>
+                    {editable && (
+                      <div className="row-actions">
+                        <button type="button" className="edit" title="Edit" onClick={() => navigate(`/employees/${e.employeeId}`)}>✎</button>
+                        <button type="button" className="del" title="Delete" onClick={() => handleDelete(e)}>🗑</button>
+                      </div>
+                    )}
                   </td>
                 </tr>
-              ))}
+              )})}
             </tbody>
           </table>
         </div>

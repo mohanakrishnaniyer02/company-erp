@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using ErpApi.Data;
 using ErpApi.DTOs;
 using ErpApi.Models;
@@ -16,6 +17,14 @@ public class EmployeesController : ControllerBase
     private readonly AppDbContext _db;
     private readonly IJwtService _jwt;
     private static readonly string[] LoginRoles = { "HR", "Admin", "SuperAdmin" };
+
+    // SuperAdmin can manage anyone. Admin can manage Admin/HR/User (not SuperAdmin).
+    // HR can manage HR/User (not Admin/SuperAdmin). Applies to both who they can
+    // create/edit AND which role they're allowed to assign.
+    private static readonly Dictionary<string, int> RoleRank = new()
+    {
+        { "User", 0 }, { "HR", 1 }, { "Admin", 2 }, { "SuperAdmin", 3 }
+    };
 
     public EmployeesController(AppDbContext db, IJwtService jwt)
     {
@@ -81,6 +90,9 @@ public class EmployeesController : ControllerBase
             return Conflict(new { message = $"Employee ID '{req.EmpCode}' is already in use — pick a different one." });
 
         var roleType = string.IsNullOrWhiteSpace(req.RoleType) ? "User" : req.RoleType!;
+        if (RoleRank.TryGetValue(roleType, out var newRoleRank) && newRoleRank > CallerRoleRank())
+            return StatusCode(403, new { message = $"You don't have permission to create a {roleType} account." });
+
         var loginError = ValidateLoginRequirements(roleType, req.Password, req.Email, hasExistingLogin: false);
         if (loginError != null) return BadRequest(new { message = loginError });
 
@@ -143,7 +155,14 @@ public class EmployeesController : ControllerBase
         var emp = await _db.Employees.Include(e => e.User).FirstOrDefaultAsync(e => e.EmployeeId == id);
         if (emp == null) return NotFound();
 
+        var callerRank = CallerRoleRank();
+        if (RoleRank.TryGetValue(emp.RoleType, out var currentRoleRank) && currentRoleRank > callerRank)
+            return StatusCode(403, new { message = "You don't have permission to edit this employee." });
+
         var roleType = string.IsNullOrWhiteSpace(req.RoleType) ? "User" : req.RoleType!;
+        if (RoleRank.TryGetValue(roleType, out var newRoleRank) && newRoleRank > callerRank)
+            return StatusCode(403, new { message = $"You don't have permission to assign the {roleType} role." });
+
         var loginError = ValidateLoginRequirements(roleType, req.Password, req.Email, hasExistingLogin: emp.User != null);
         if (loginError != null) return BadRequest(new { message = loginError });
 
@@ -244,6 +263,9 @@ public class EmployeesController : ControllerBase
         var emp = await _db.Employees.FindAsync(id);
         if (emp == null) return NotFound();
 
+        if (RoleRank.TryGetValue(emp.RoleType, out var currentRoleRank) && currentRoleRank > CallerRoleRank())
+            return StatusCode(403, new { message = "You don't have permission to deactivate this employee." });
+
         if (hard)
         {
             if (!User.IsInRole("SuperAdmin"))
@@ -259,5 +281,11 @@ public class EmployeesController : ControllerBase
 
         await _db.SaveChangesAsync();
         return NoContent();
+    }
+
+    private int CallerRoleRank()
+    {
+        var role = User.FindFirstValue(ClaimTypes.Role) ?? "User";
+        return RoleRank.TryGetValue(role, out var rank) ? rank : 0;
     }
 }

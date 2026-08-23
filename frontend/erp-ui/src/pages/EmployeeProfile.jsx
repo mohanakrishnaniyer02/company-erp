@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import api from '../api/client'
 import Topbar from '../components/Topbar.jsx'
+import { useAuth } from '../context/AuthContext.jsx'
 
 const emptyForm = {
   empCode: '', type: 'Regular', fullName: '', designation: '', departmentId: '', companyId: '', managerId: '',
@@ -10,12 +11,18 @@ const emptyForm = {
 }
 
 const LOGIN_ROLES = ['HR', 'Admin', 'SuperAdmin']
+const ROLE_RANK = { User: 0, HR: 1, Admin: 2, SuperAdmin: 3 }
+const ALL_ROLES = ['User', 'HR', 'Admin', 'SuperAdmin']
 
 export default function EmployeeProfile({ mode }) {
   const { id } = useParams()
   const navigate = useNavigate()
+  const { user } = useAuth()
+  const callerRank = ROLE_RANK[user?.role] ?? 0
+  const assignableRoles = ALL_ROLES.filter(r => ROLE_RANK[r] <= callerRank)
   const [tab, setTab] = useState('basic')
   const [form, setForm] = useState(emptyForm)
+  const [forbidden, setForbidden] = useState(false)
   const [lookups, setLookups] = useState({ companies: [], departments: [], locations: [] })
   const [managerOptions, setManagerOptions] = useState([])
   const [shiftTemplates, setShiftTemplates] = useState([])
@@ -41,6 +48,10 @@ export default function EmployeeProfile({ mode }) {
     if (mode === 'edit' && id) {
       api.get(`/employees/${id}`).then(res => {
         const e = res.data
+        if ((ROLE_RANK[e.roleType] ?? 0) > callerRank) {
+          setForbidden(true)
+          return
+        }
         setHasLogin(!!e.userId)
         setForm({
           empCode: e.empCode,
@@ -126,6 +137,18 @@ export default function EmployeeProfile({ mode }) {
 
   const initials = form.fullName ? form.fullName.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase() : 'NE'
 
+  if (forbidden) {
+    return (
+      <>
+        <Topbar crumbs={<><a onClick={() => navigate('/employees')} style={{color:'var(--blue-600)', cursor:'pointer', fontWeight:600}}>Employees</a> / <b>Not authorized</b></>} />
+        <div className="page-head">
+          <div><h1>Not authorized</h1><p>Your role doesn't have permission to view or edit this employee.</p></div>
+        </div>
+        <button type="button" className="btn-ghost" onClick={() => navigate('/employees')}>← Back to Employees</button>
+      </>
+    )
+  }
+
   return (
     <>
       <Topbar crumbs={<><a onClick={() => navigate('/employees')} style={{color:'var(--blue-600)', cursor:'pointer', fontWeight:600}}>Employees</a> / <b>{mode==='add' ? 'New' : form.empCode}</b></>} />
@@ -199,7 +222,7 @@ export default function EmployeeProfile({ mode }) {
 
                 <div className="field"><label>Role Type</label>
                   <select value={form.roleType} onChange={e => set('roleType', e.target.value)}>
-                    <option>User</option><option>HR</option><option>Admin</option><option>SuperAdmin</option>
+                    {assignableRoles.map(r => <option key={r}>{r}</option>)}
                   </select>
                 </div>
                 {LOGIN_ROLES.includes(form.roleType) && (
