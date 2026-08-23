@@ -54,14 +54,18 @@ UNION ALL
 SELECT old_user_id, employee_id FROM legacy_map;
 
 -- Remap "who created this attendance entry" from the old users space to the
--- new employees space, in one clean pass.
+-- new employees space. The old FK must be dropped BEFORE writing the new
+-- values — otherwise Postgres checks each new value against the *old*
+-- target (users.user_id) and rejects it, since the new value is really an
+-- employees.employee_id, not a users.user_id.
+ALTER TABLE attendance_entries DROP CONSTRAINT IF EXISTS attendance_entries_created_by_user_id_fkey;
+
 UPDATE attendance_entries a
 SET created_by_user_id = m.new_employee_id
 FROM full_map m
 WHERE a.created_by_user_id = m.old_user_id;
 
--- Repoint the FK: created_by_user_id now references employees, not users.
-ALTER TABLE attendance_entries DROP CONSTRAINT IF EXISTS attendance_entries_created_by_user_id_fkey;
+-- Now that the values are correct, add the new FK pointing at employees.
 ALTER TABLE attendance_entries ADD CONSTRAINT fk_attendance_created_by_employee
     FOREIGN KEY (created_by_user_id) REFERENCES employees(employee_id);
 
