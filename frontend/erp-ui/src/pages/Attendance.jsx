@@ -25,6 +25,7 @@ export default function Attendance() {
   const [calc,setCalc] = useState({actualWorkMinutes:0,requiredWorkMinutes:0,calculatedOtMinutes:0,roundedOtMinutes:0,approvedOtMinutes:0})
   const [approvedOt,setApprovedOt] = useState(''), [reason,setReason] = useState('')
   const [ruleForm,setRuleForm] = useState({fromMinutes:0,toMinutes:29,roundedMinutes:0})
+  const [showRoundingModal,setShowRoundingModal] = useState(false)
   const [error,setError] = useState(''), [success,setSuccess] = useState('')
 
   useEffect(() => {
@@ -113,6 +114,15 @@ export default function Attendance() {
     }catch(err){setError(err.response?.data?.message||'Could not add rounding rule.')}
   }
 
+  async function deleteRoundingRule(id){
+    setError('')
+    try{
+      await api.delete(`/attendance/rounding-rules/${id}`)
+      setRoundingRules(rules=>rules.filter(r=>r.otRoundingRuleId!==id))
+      setSuccess('OT rounding rule deleted.')
+    }catch(err){setError(err.response?.data?.message||'Could not delete rounding rule.')}
+  }
+
   function chooseEmployee(v){setEmployeeId(v)}
 
   return <>
@@ -147,6 +157,10 @@ export default function Attendance() {
           </div>
           <div className="field"><label>Entry Type *</label><select value={entryType} onChange={e=>setEntryType(e.target.value)}><option>User</option><option>Biometric</option></select></div>
         </div>
+      </div>
+
+      <div style={{display:'flex', justifyContent:'flex-end', marginBottom:16}}>
+        <button type="button" className="btn-ghost" onClick={()=>setShowRoundingModal(true)}>⚙ OT Rounding Rules</button>
       </div>
 
       <div className="card">
@@ -190,16 +204,29 @@ export default function Attendance() {
       </table></div>
     </div>
 
-    <div className="card" style={{marginTop:20}}>
-      <h3>OT Rounding Rules</h3><p className="card-sub">The default rules reproduce the supplied 0/30/60/90-minute rounding table. Rules are stored as a master table so payroll policy can change without changing code.</p>
-      <form className="form-grid" onSubmit={addRoundingRule} style={{marginBottom:18}}>
-        <div className="field"><label>From Minutes</label><input type="number" min="0" value={ruleForm.fromMinutes} onChange={e=>setRuleForm(f=>({...f,fromMinutes:e.target.value}))}/></div>
-        <div className="field"><label>To Minutes</label><input type="number" min="0" value={ruleForm.toMinutes} onChange={e=>setRuleForm(f=>({...f,toMinutes:e.target.value}))}/></div>
-        <div className="field"><label>Payroll OT Minutes</label><input type="number" min="0" value={ruleForm.roundedMinutes} onChange={e=>setRuleForm(f=>({...f,roundedMinutes:e.target.value}))}/></div>
-        <div className="field" style={{display:'flex',alignItems:'end'}}><button className="btn-blue" type="submit">＋ Add Rule</button></div>
-      </form>
-      <div className="table-scroll"><table className="emp-table"><thead><tr><th>Actual OT From</th><th>Actual OT To</th><th>Payroll OT</th></tr></thead>
-      <tbody>{roundingRules.map(r=><tr key={r.otRoundingRuleId}><td>{formatMinutes(r.fromMinutes)}</td><td>{formatMinutes(r.toMinutes)}</td><td><b>{formatMinutes(r.roundedMinutes)}</b></td></tr>)}</tbody></table></div>
-    </div>
+    {showRoundingModal && (
+      <div className="modal-overlay" onClick={()=>setShowRoundingModal(false)}>
+        <div className="modal-box" onClick={e=>e.stopPropagation()}>
+          <div className="modal-head">
+            <h3>OT Rounding Rules</h3>
+            <button type="button" className="icon-btn" onClick={()=>setShowRoundingModal(false)} title="Close">✕</button>
+          </div>
+          <p className="card-sub">The default rules reproduce the supplied 0/30/60/90-minute rounding table. Rules are stored as a master table so payroll policy can change without changing code.</p>
+          <form className="form-grid" onSubmit={addRoundingRule} style={{marginBottom:18}}>
+            <div className="field"><label>From Minutes</label><input type="number" min="0" value={ruleForm.fromMinutes} onChange={e=>setRuleForm(f=>({...f,fromMinutes:e.target.value}))}/></div>
+            <div className="field"><label>To Minutes</label><input type="number" min="0" value={ruleForm.toMinutes} onChange={e=>setRuleForm(f=>({...f,toMinutes:e.target.value}))}/></div>
+            <div className="field"><label>Payroll OT Minutes</label><input type="number" min="0" value={ruleForm.roundedMinutes} onChange={e=>setRuleForm(f=>({...f,roundedMinutes:e.target.value}))}/></div>
+            <div className="field" style={{display:'flex',alignItems:'end'}}><button className="btn-blue" type="submit">＋ Add Rule</button></div>
+          </form>
+          <div className="table-scroll"><table className="emp-table"><thead><tr><th>Actual OT From</th><th>Actual OT To</th><th>Payroll OT</th><th></th></tr></thead>
+          <tbody>{roundingRules.map(r=>(
+            <tr key={r.otRoundingRuleId}>
+              <td>{formatMinutes(r.fromMinutes)}</td><td>{formatMinutes(r.toMinutes)}</td><td><b>{formatMinutes(r.roundedMinutes)}</b></td>
+              <td><button type="button" className="icon-btn" onClick={()=>deleteRoundingRule(r.otRoundingRuleId)} title="Delete this rule">🗑</button></td>
+            </tr>
+          ))}</tbody></table></div>
+        </div>
+      </div>
+    )}
   </>
 }

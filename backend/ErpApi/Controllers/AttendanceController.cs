@@ -175,6 +175,17 @@ public class AttendanceController : ControllerBase
         return Ok(rule);
     }
 
+    [HttpDelete("rounding-rules/{id:int}")]
+    [Authorize(Roles = "HR,Admin,SuperAdmin")]
+    public async Task<IActionResult> DeleteRoundingRule(int id)
+    {
+        var rule = await _db.OtRoundingRules.FindAsync(id);
+        if (rule == null) return NotFound();
+        _db.OtRoundingRules.Remove(rule);
+        await _db.SaveChangesAsync();
+        return NoContent();
+    }
+
     private async Task<(AttendanceCalculationResult? Result, string? Error)> CalculateInternal(AttendanceCalculationRequest req)
     {
         var employee = await _db.Employees.Include(e => e.Department).FirstOrDefaultAsync(e => e.EmployeeId == req.EmployeeId);
