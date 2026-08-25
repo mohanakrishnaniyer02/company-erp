@@ -211,14 +211,13 @@ export default function Attendance() {
             <h3>OT Rounding Rules</h3>
             <button type="button" className="icon-btn" onClick={()=>setShowRoundingModal(false)} title="Close">✕</button>
           </div>
-          <p className="card-sub">The default rules reproduce the supplied 0/30/60/90-minute rounding table. Rules are stored as a master table so payroll policy can change without changing code.</p>
           <form className="form-grid" onSubmit={addRoundingRule} style={{marginBottom:18}}>
             <div className="field"><label>From Minutes</label><input type="number" min="0" value={ruleForm.fromMinutes} onChange={e=>setRuleForm(f=>({...f,fromMinutes:e.target.value}))}/></div>
             <div className="field"><label>To Minutes</label><input type="number" min="0" value={ruleForm.toMinutes} onChange={e=>setRuleForm(f=>({...f,toMinutes:e.target.value}))}/></div>
             <div className="field"><label>Payroll OT Minutes</label><input type="number" min="0" value={ruleForm.roundedMinutes} onChange={e=>setRuleForm(f=>({...f,roundedMinutes:e.target.value}))}/></div>
             <div className="field" style={{display:'flex',alignItems:'end'}}><button className="btn-blue" type="submit">＋ Add Rule</button></div>
           </form>
-          <div className="table-scroll"><table className="emp-table"><thead><tr><th>Actual OT From</th><th>Actual OT To</th><th>Payroll OT</th><th></th></tr></thead>
+          <div className="table-scroll" style={{maxHeight:280, overflowY:'auto'}}><table className="emp-table"><thead><tr><th>Actual OT From</th><th>Actual OT To</th><th>Payroll OT</th><th></th></tr></thead>
           <tbody>{roundingRules.map(r=>(
             <tr key={r.otRoundingRuleId}>
               <td>{formatMinutes(r.fromMinutes)}</td><td>{formatMinutes(r.toMinutes)}</td><td><b>{formatMinutes(r.roundedMinutes)}</b></td>

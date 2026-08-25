@@ -13,6 +13,7 @@ export default function Departments() {
   const [items, setItems] = useState([])
   const [form, setForm] = useState(empty)
   const [editingId, setEditingId] = useState(null)
+  const [showForm, setShowForm] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
@@ -29,10 +30,12 @@ export default function Departments() {
       minOtMinutes:d.minOtMinutes ?? '', maxOtMinutes:d.maxOtMinutes ?? '',
       requiredWorkMinutes:d.requiredWorkMinutes
     })
-    setError(''); setSuccess('')
+    setError(''); setSuccess(''); setShowForm(true)
   }
 
-  function reset() { setEditingId(null); setForm(empty) }
+  function startAdd() { setEditingId(null); setForm(empty); setError(''); setSuccess(''); setShowForm(true) }
+
+  function reset() { setEditingId(null); setForm(empty); setShowForm(false) }
 
   async function save(e) {
     e.preventDefault(); setError(''); setSuccess('')
@@ -62,13 +65,14 @@ export default function Departments() {
       <Topbar crumbs={<b>Departments</b>} />
       <div className="page-head">
         <div><h1>Departments</h1><p>Configure required work hours and department OT policy.</p></div>
+        <button type="button" className="btn-blue" onClick={showForm?reset:startAdd}>{showForm?'Cancel':'＋ Add Department'}</button>
       </div>
 
       {error && <div className="auth-error" style={{marginBottom:16}}>{error}</div>}
       {success && <div className="success-note" style={{marginBottom:16}}>{success}</div>}
 
-      <div className="master-grid">
-        <form className="card" onSubmit={save}>
+      {showForm && (
+        <form className="card" onSubmit={save} style={{marginBottom:20}}>
           <h3>{editingId ? 'Edit Department' : 'Add Department'}</h3>
           <p className="card-sub">All work-hour values are stored in minutes.</p>
           <div className="form-grid two">
@@ -93,30 +97,30 @@ export default function Departments() {
             </div>
           </div>
           <div className="footer-actions" style={{padding:'16px 0 0', marginTop:8}}>
-            {editingId && <button type="button" className="btn-ghost" onClick={reset}>Cancel</button>}
+            <button type="button" className="btn-ghost" onClick={reset}>Cancel</button>
             <button className="btn-blue" type="submit">{editingId ? 'Update Department':'Save Department'}</button>
           </div>
         </form>
+      )}
 
-        <div className="table-card">
-          <div className="table-scroll">
-            <table className="emp-table">
-              <thead><tr><th>Department</th><th>OT</th><th>Min OT</th><th>Max OT</th><th>Required</th><th></th></tr></thead>
-              <tbody>
-                {items.map(d => (
-                  <tr key={d.departmentId}>
-                    <td><b>{d.departmentName}</b></td>
-                    <td><span className={'badge '+(d.otAllowed?'active':'inactive')}>{d.otAllowed?'Yes':'No'}</span></td>
-                    <td>{d.minOtMinutes == null ? '—' : mins(d.minOtMinutes)}</td>
-                    <td>{d.maxOtMinutes == null ? '—' : mins(d.maxOtMinutes)}</td>
-                    <td>{mins(d.requiredWorkMinutes)}</td>
-                    <td><div className="row-actions"><button className="edit" title="Edit" onClick={()=>edit(d)}>✎</button><button className="del" title="Delete" onClick={()=>remove(d)}>🗑</button></div></td>
-                  </tr>
-                ))}
-                {items.length===0 && <tr className="empty-row"><td colSpan="6">No departments configured.</td></tr>}
-              </tbody>
-            </table>
-          </div>
+      <div className="table-card">
+        <div className="table-scroll">
+          <table className="emp-table">
+            <thead><tr><th>Department</th><th>OT</th><th>Min OT</th><th>Max OT</th><th>Required</th><th></th></tr></thead>
+            <tbody>
+              {items.map(d => (
+                <tr key={d.departmentId}>
+                  <td><b>{d.departmentName}</b></td>
+                  <td><span className={'badge '+(d.otAllowed?'active':'inactive')}>{d.otAllowed?'Yes':'No'}</span></td>
+                  <td>{d.minOtMinutes == null ? '—' : mins(d.minOtMinutes)}</td>
+                  <td>{d.maxOtMinutes == null ? '—' : mins(d.maxOtMinutes)}</td>
+                  <td>{mins(d.requiredWorkMinutes)}</td>
+                  <td><div className="row-actions"><button className="edit" title="Edit" onClick={()=>edit(d)}>✎</button><button className="del" title="Delete" onClick={()=>remove(d)}>🗑</button></div></td>
+                </tr>
+              ))}
+              {items.length===0 && <tr className="empty-row"><td colSpan="6">No departments configured.</td></tr>}
+            </tbody>
+          </table>
         </div>
       </div>
     </>

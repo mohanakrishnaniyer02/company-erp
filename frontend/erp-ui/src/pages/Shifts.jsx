@@ -14,12 +14,14 @@ function mins(v){const n=Number(v||0); return `${Math.floor(n/60)}h ${n%60}m`}
 
 export default function Shifts(){
   const [items,setItems]=useState([]), [form,setForm]=useState(empty), [editingId,setEditingId]=useState(null)
+  const [showForm,setShowForm]=useState(false)
   const [error,setError]=useState(''), [success,setSuccess]=useState('')
 
   const load=()=>api.get('/shifts').then(r=>setItems(r.data)).catch(()=>setError('Could not load shifts.'))
   useEffect(()=>{load()},[])
   const set=(f,v)=>setForm(x=>({...x,[f]:v}))
-  const reset=()=>{setEditingId(null);setForm(empty)}
+  const reset=()=>{setEditingId(null);setForm(empty);setShowForm(false)}
+  const startAdd=()=>{setEditingId(null);setForm(empty);setError('');setSuccess('');setShowForm(true)}
   const edit=s=>{
     setEditingId(s.shiftId)
     setForm({
@@ -28,7 +30,7 @@ export default function Shifts(){
       graceInMinutes:s.graceInMinutes,graceOutMinutes:s.graceOutMinutes,lateAfterMinutes:s.lateAfterMinutes,earlyOutMinutes:s.earlyOutMinutes,
       minimumWorkMinutes:s.minimumWorkMinutes,halfDayMinutes:s.halfDayMinutes,fullDayMinutes:s.fullDayMinutes,
       otAllowed:s.otAllowed,otStartAfterMinutes:s.otStartAfterMinutes,isNightShift:s.isNightShift,status:s.status
-    }); setError('');setSuccess('')
+    }); setError('');setSuccess('');setShowForm(true)
   }
   async function save(e){
     e.preventDefault();setError('');setSuccess('')
@@ -45,11 +47,15 @@ export default function Shifts(){
   }
   return <>
     <Topbar crumbs={<b>Shifts</b>}/>
-    <div className="page-head"><div><h1>Shifts</h1><p>Master configuration used by employee profiles and daily attendance.</p></div></div>
+    <div className="page-head">
+      <div><h1>Shifts</h1><p>Master configuration used by employee profiles and daily attendance.</p></div>
+      <button type="button" className="btn-blue" onClick={showForm?reset:startAdd}>{showForm?'Cancel':'＋ Add Shift'}</button>
+    </div>
     {error&&<div className="auth-error" style={{marginBottom:16}}>{error}</div>}
     {success&&<div className="success-note" style={{marginBottom:16}}>{success}</div>}
-    <div className="master-grid">
-      <form className="card" onSubmit={save}>
+
+    {showForm && (
+      <form className="card" onSubmit={save} style={{marginBottom:20}}>
         <h3>{editingId?'Edit Shift':'Add Shift'}</h3><p className="card-sub">Work and OT values are stored as minutes.</p>
         <div className="form-grid two">
           <div className="field"><label>Shift ID</label><input value={editingId||'Auto-generated'} disabled/></div>
@@ -74,19 +80,20 @@ export default function Shifts(){
           <div className="field"><label>Status</label><select value={form.status} onChange={e=>set('status',e.target.value)}><option>Active</option><option>Inactive</option></select></div>
         </div>
         <p className="field-help">Full day: {mins(form.fullDayMinutes)} · Minimum work: {mins(form.minimumWorkMinutes)}</p>
-        <div className="footer-actions" style={{padding:'16px 0 0'}}>{editingId&&<button type="button" className="btn-ghost" onClick={reset}>Cancel</button>}<button className="btn-blue">Save Shift</button></div>
+        <div className="footer-actions" style={{padding:'16px 0 0'}}><button type="button" className="btn-ghost" onClick={reset}>Cancel</button><button className="btn-blue">Save Shift</button></div>
       </form>
-      <div className="table-card"><div className="table-scroll"><table className="emp-table">
-        <thead><tr><th>Code</th><th>Shift</th><th>Time</th><th>Lunch</th><th>Work</th><th>OT</th><th>Status</th><th></th></tr></thead>
-        <tbody>{items.map(s=><tr key={s.shiftId}>
-          <td className="mono">{s.shiftCode}</td><td><b>{s.shiftName}</b><div className="meta">{s.isNightShift?'Night':'Day'}</div></td>
-          <td>{(s.startTime||'').slice(0,5)} – {(s.endTime||'').slice(0,5)}</td>
-          <td>{s.lunchStartTime?(s.lunchStartTime.slice(0,5)+' – '+(s.lunchEndTime||'').slice(0,5)):'—'}</td>
-          <td>{mins(s.fullDayMinutes)}</td><td>{s.otAllowed?'Allowed':'No'}</td>
-          <td><span className={'badge '+(s.status==='Active'?'active':'inactive')}>{s.status}</span></td>
-          <td><div className="row-actions"><button className="edit" onClick={()=>edit(s)}>✎</button><button className="del" onClick={()=>remove(s)}>🗑</button></div></td>
-        </tr>)}{items.length===0&&<tr className="empty-row"><td colSpan="8">No shifts configured.</td></tr>}</tbody>
-      </table></div></div>
-    </div>
+    )}
+
+    <div className="table-card"><div className="table-scroll"><table className="emp-table">
+      <thead><tr><th>Code</th><th>Shift</th><th>Time</th><th>Lunch</th><th>Work</th><th>OT</th><th>Status</th><th></th></tr></thead>
+      <tbody>{items.map(s=><tr key={s.shiftId}>
+        <td className="mono">{s.shiftCode}</td><td><b>{s.shiftName}</b><div className="meta">{s.isNightShift?'Night':'Day'}</div></td>
+        <td>{(s.startTime||'').slice(0,5)} – {(s.endTime||'').slice(0,5)}</td>
+        <td>{s.lunchStartTime?(s.lunchStartTime.slice(0,5)+' – '+(s.lunchEndTime||'').slice(0,5)):'—'}</td>
+        <td>{mins(s.fullDayMinutes)}</td><td>{s.otAllowed?'Allowed':'No'}</td>
+        <td><span className={'badge '+(s.status==='Active'?'active':'inactive')}>{s.status}</span></td>
+        <td><div className="row-actions"><button className="edit" onClick={()=>edit(s)}>✎</button><button className="del" onClick={()=>remove(s)}>🗑</button></div></td>
+      </tr>)}{items.length===0&&<tr className="empty-row"><td colSpan="8">No shifts configured.</td></tr>}</tbody>
+    </table></div></div>
   </>
 }
