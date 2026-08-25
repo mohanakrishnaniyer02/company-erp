@@ -119,7 +119,7 @@ Token lifetime is set in `appsettings.json` under `Jwt:ExpiryMinutes`
 | **Departments** | Master data: name, OT allowed, min/max OT time, required work hours per day. Feeds the Department dropdown on Employee |
 | **Shifts** | Master data: timing, grace/late/early-out rules, minimum/half-day/full-day minutes, OT rules, night-shift flag. Feeds the Shift dropdown on Employee |
 | **Daily Attendance Entry** | HR/Admin/SuperAdmin record each employee's day: shift, attendance type, and an unlimited number of In/Out punch pairs (add as many as actually happened — no fixed cap). Automatically calculates actual work, required work (from Department), calculated OT, and rounded OT (floor to nearest 30 minutes); Approved OT is editable with a required reason if it differs from the rounded value |
-| **Dashboard** | Headcount KPIs, live department/role/shift breakdowns, and an **Attendance Explorer** — pick a month and browse either a company-wide summary or one employee's full day-by-day record |
+| **Dashboard** | Headcount KPIs (total/active/contract, today's present count and approved OT), plus an **Attendance Explorer** — pick a month and browse either a company-wide summary or one employee's full day-by-day record |
 
 All time values are stored in minutes internally and displayed in hours for
 readability.
