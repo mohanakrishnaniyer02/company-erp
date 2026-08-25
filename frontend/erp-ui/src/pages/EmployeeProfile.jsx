@@ -35,6 +35,7 @@ export default function EmployeeProfile({ mode }) {
   const [newEdu, setNewEdu] = useState({ institutionName:'', degree:'', completionDate:'' })
   const [hasLogin, setHasLogin] = useState(false)
   const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
 
   useEffect(() => {
     api.get('/lookups/companies').then(r => setLookups(l => ({...l, companies: r.data})))
@@ -103,7 +104,7 @@ export default function EmployeeProfile({ mode }) {
       if (bank.bankName || bank.accountNumber || bank.ifscCode) {
         await api.put(`/employees/${employeeId}/bank-details`, bank)
       }
-      navigate('/employees')
+      navigate('/employees', { state: { message: `${form.fullName} ${mode === 'add' ? 'added' : 'updated'}.` } })
     } catch (err) {
       setError(err.response?.data?.message || 'Could not save employee.')
     }
@@ -114,25 +115,30 @@ export default function EmployeeProfile({ mode }) {
     const res = await api.post(`/employees/${id}/proof`, newProof)
     setProofs(p => [...p, res.data])
     setNewProof({ proofType: 'Aadhaar', proofNumber: '' })
+    setSuccess('Proof document added.')
   }
   async function removeProof(proofId) {
     await api.delete(`/employees/${id}/proof/${proofId}`)
     setProofs(p => p.filter(x => x.proofId !== proofId))
+    setSuccess('Proof document removed.')
   }
   async function saveAddress() {
     if (mode !== 'edit') return
     const res = await api.put(`/employees/${id}/addresses/${addrTab}`, { addressType: addrTab, ...addresses[addrTab] })
     setAddresses(a => ({ ...a, [addrTab]: res.data }))
+    setSuccess(`${addrTab} address saved.`)
   }
   async function addEducation() {
     if (!newEdu.institutionName.trim() || mode !== 'edit') return
     const res = await api.post(`/employees/${id}/education`, newEdu)
     setEducation(e => [...e, res.data])
     setNewEdu({ institutionName:'', degree:'', completionDate:'' })
+    setSuccess('Qualification added.')
   }
   async function removeEducation(educationId) {
     await api.delete(`/employees/${id}/education/${educationId}`)
     setEducation(e => e.filter(x => x.educationId !== educationId))
+    setSuccess('Qualification removed.')
   }
 
   const initials = form.fullName ? form.fullName.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase() : 'NE'
@@ -161,6 +167,7 @@ export default function EmployeeProfile({ mode }) {
       </div>
 
       {error && <div className="auth-error" style={{marginBottom:16}}>{error}</div>}
+      {success && <div className="success-note" style={{marginBottom:16}}>{success}</div>}
 
       <div className="emp-layout">
         <div className="badge-card">

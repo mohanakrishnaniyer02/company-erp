@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import api from '../api/client'
 import Topbar from '../components/Topbar.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
@@ -14,7 +14,16 @@ export default function EmployeeList() {
   const [filter, setFilter] = useState('all')
   const [roleFilter, setRoleFilter] = useState('all')
   const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
   const navigate = useNavigate()
+  const location = useLocation()
+
+  useEffect(() => {
+    if (location.state?.message) {
+      setSuccess(location.state.message)
+      navigate(location.pathname, { replace: true, state: {} }) // clear flash message so it doesn't reappear on back/refresh
+    }
+  }, [location.state])
 
   const load = useCallback(() => {
     const params = {}
@@ -32,6 +41,7 @@ export default function EmployeeList() {
     if (!window.confirm(`Deactivate ${emp.fullName} (${emp.empCode})? Their record is retained but marked Inactive.`)) return
     try {
       await api.delete(`/employees/${emp.employeeId}`)
+      setSuccess(`${emp.fullName} deactivated.`)
       load()
     } catch {
       setError('Could not delete this employee.')
@@ -61,6 +71,7 @@ export default function EmployeeList() {
       </div>
 
       {error && <div className="auth-error" style={{marginBottom:16}}>{error}</div>}
+      {success && <div className="success-note" style={{marginBottom:16}}>{success}</div>}
 
       <div className="table-card">
         <div className="table-scroll">

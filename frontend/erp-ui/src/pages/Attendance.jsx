@@ -114,7 +114,8 @@ export default function Attendance() {
     }catch(err){setError(err.response?.data?.message||'Could not add rounding rule.')}
   }
 
-  async function deleteRoundingRule(id){
+  async function deleteRoundingRule(id, label){
+    if (!window.confirm(`Delete the rounding rule "${label}"?`)) return
     setError('')
     try{
       await api.delete(`/attendance/rounding-rules/${id}`)
@@ -221,7 +222,7 @@ export default function Attendance() {
           <tbody>{roundingRules.map(r=>(
             <tr key={r.otRoundingRuleId}>
               <td>{formatMinutes(r.fromMinutes)}</td><td>{formatMinutes(r.toMinutes)}</td><td><b>{formatMinutes(r.roundedMinutes)}</b></td>
-              <td><button type="button" className="icon-btn" onClick={()=>deleteRoundingRule(r.otRoundingRuleId)} title="Delete this rule">🗑</button></td>
+              <td><button type="button" className="icon-btn" onClick={()=>deleteRoundingRule(r.otRoundingRuleId, `${formatMinutes(r.fromMinutes)} – ${formatMinutes(r.toMinutes)}`)} title="Delete this rule">🗑</button></td>
             </tr>
           ))}</tbody></table></div>
         </div>

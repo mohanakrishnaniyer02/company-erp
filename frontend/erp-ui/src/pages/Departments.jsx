@@ -56,7 +56,7 @@ export default function Departments() {
 
   async function remove(d) {
     if (!window.confirm(`Delete ${d.departmentName}?`)) return
-    try { await api.delete(`/departments/${d.departmentId}`); load() }
+    try { await api.delete(`/departments/${d.departmentId}`); setSuccess(`${d.departmentName} deleted.`); load() }
     catch (err) { setError(err.response?.data?.message || 'Could not delete department.') }
   }
 

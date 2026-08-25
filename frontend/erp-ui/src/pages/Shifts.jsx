@@ -43,7 +43,7 @@ export default function Shifts(){
   }
   async function remove(s){
     if(!window.confirm(`Delete ${s.shiftName}?`))return
-    try{await api.delete(`/shifts/${s.shiftId}`);load()}catch(err){setError(err.response?.data?.message||'Could not delete shift.')}
+    try{await api.delete(`/shifts/${s.shiftId}`);setSuccess(`${s.shiftName} deleted.`);load()}catch(err){setError(err.response?.data?.message||'Could not delete shift.')}
   }
   return <>
     <Topbar crumbs={<b>Shifts</b>}/>
