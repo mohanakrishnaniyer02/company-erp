@@ -265,6 +265,27 @@ public class EmployeesController : ControllerBase
         return NoContent();
     }
 
+    // PUT /api/employees/5/reactivate — undo a soft delete. Sets Status back
+    // to Active and clears the leaving date; leaving comments are kept as a
+    // historical note rather than erased.
+    [HttpPut("{id:int}/reactivate")]
+    [Authorize(Roles = "HR,Admin,SuperAdmin")]
+    public async Task<IActionResult> Reactivate(int id)
+    {
+        var emp = await _db.Employees.FindAsync(id);
+        if (emp == null) return NotFound();
+
+        if (RoleRank.TryGetValue(emp.RoleType, out var currentRoleRank) && currentRoleRank > CallerRoleRank())
+            return StatusCode(403, new { message = "You don't have permission to reactivate this employee." });
+
+        emp.Status = "Active";
+        emp.DateOfLeaving = null;
+        emp.UpdatedAt = DateTime.UtcNow;
+
+        await _db.SaveChangesAsync();
+        return NoContent();
+    }
+
     private int CallerRoleRank()
     {
         var role = User.FindFirstValue(ClaimTypes.Role) ?? "User";

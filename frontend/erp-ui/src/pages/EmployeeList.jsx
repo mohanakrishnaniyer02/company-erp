@@ -48,6 +48,17 @@ export default function EmployeeList() {
     }
   }
 
+  async function handleReactivate(emp) {
+    if (!window.confirm(`Reactivate ${emp.fullName} (${emp.empCode})? Their status will be set back to Active.`)) return
+    try {
+      await api.put(`/employees/${emp.employeeId}/reactivate`)
+      setSuccess(`${emp.fullName} reactivated.`)
+      load()
+    } catch (err) {
+      setError(err.response?.data?.message || 'Could not reactivate this employee.')
+    }
+  }
+
   return (
     <>
       <Topbar crumbs={<b>Employees</b>} search={search} onSearch={setSearch} />
@@ -106,7 +117,9 @@ export default function EmployeeList() {
                     {editable && (
                       <div className="row-actions">
                         <button type="button" className="edit" title="Edit" onClick={() => navigate(`/employees/${e.employeeId}`)}>✎</button>
-                        <button type="button" className="del" title="Delete" onClick={() => handleDelete(e)}>🗑</button>
+                        {e.status === 'Inactive'
+                          ? <button type="button" className="edit" title="Reactivate" onClick={() => handleReactivate(e)}>↺</button>
+                          : <button type="button" className="del" title="Delete" onClick={() => handleDelete(e)}>🗑</button>}
                       </div>
                     )}
                   </td>
