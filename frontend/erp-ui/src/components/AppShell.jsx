@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext.jsx'
 export default function AppShell() {
   const { user } = useAuth()
   const canManage = ['HR','Admin','SuperAdmin'].includes(user?.role)
-  const [collapsed, setCollapsed] = useState(false)
+  const [collapsed, setCollapsed] = useState(true)
 
   return (
     <div id="app-grid">
