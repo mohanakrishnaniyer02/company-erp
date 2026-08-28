@@ -38,10 +38,8 @@ in this project, so you don't need to write anything, just push it (Step 0).
 7. **Connection tab**: paste in the Hostname, Port, Database name, Username,
    and Password from Render's Connections page. Save.
 8. Once connected, open the **Query Tool** on this new server/database and
-   run **`database/schema.sql`** — that alone sets up a fresh database with
-   the bootstrap SuperAdmin already seeded. You do **not** need to run the
-   other migration files in `database/migrations/` — those were only for
-   upgrading an existing database, not for a brand-new one.
+   run **`database/schema.sql`** — that alone sets up a complete database
+   with the bootstrap SuperAdmin already seeded.
 
 ## Step 3 — Backend (.NET API)
 

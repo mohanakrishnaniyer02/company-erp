@@ -43,7 +43,11 @@ This version builds on the existing ERP project.
 Run `database/schema.sql`.
 
 ### Existing database
-Run `database/migrations/20260818_attendance_department_shift.sql` once against the existing PostgreSQL database.
+All migrations have been folded into `database/schema.sql` and were already
+applied to the live database as they were introduced — there's no longer a
+`database/migrations/` folder to run separately (removed once every
+environment had them applied, since running them against a database already
+on the current schema would fail).
 
 Do not run the full schema file against an existing production database because it intentionally drops and recreates tables.
 

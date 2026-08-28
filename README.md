@@ -6,9 +6,7 @@ calculation, and a role-based dashboard.
 
 ```
 erp-system/
-├── database/
-│   ├── schema.sql          ← fresh install: run this alone, nothing else
-│   └── migrations/         ← only for upgrading an existing database
+├── database/schema.sql     ← the only database setup you need
 ├── backend/ErpApi/         ← ASP.NET Core 8 Web API
 └── frontend/erp-ui/        ← React (Vite)
 ```
@@ -23,17 +21,12 @@ erp-system/
 
 ## 1. Database
 
-**Fresh install** (no existing data): run `database/schema.sql` once. That's
-it — it creates every table and seeds:
+Run `database/schema.sql` once. That's it — it creates every table and seeds:
 - 3 companies, 4 locations, 4 departments, 2 shift templates (Day/Night)
 - 8 attendance status types (Present, Absent, Half Day, Weekly Off, Holiday,
   Paid Leave, Unpaid Leave, On Duty) and their OT rounding rules
 - 5 sample employees
 - **One working bootstrap login** (see [Authentication](#4-authentication--roles) below)
-
-**Upgrading an existing database**: run every file in
-`database/migrations/`, in filename order (they're dated). Each is
-idempotent-safe to re-run and documents what it does at the top.
 
 ## 2. Backend (.NET 8 Web API)
 
