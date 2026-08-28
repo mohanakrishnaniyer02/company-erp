@@ -205,10 +205,10 @@ CREATE INDEX idx_attendance_punches_attendance ON attendance_punches(attendance_
 -- no public signup exists anymore. Log in with this once, you'll be forced
 -- to set your own password immediately (must_change_password), then use the
 -- Employee form to add real Admin/HR people for the organization.
---   Email:    superadmin@company.co
+--   Email:    superadmin@company.com
 --   Password: ChangeMe123!
 INSERT INTO employees (emp_code, type, full_name, role_type, email, password_hash, must_change_password, status) VALUES
- ('SUPERADMIN-001', 'Regular', 'System Administrator', 'SuperAdmin', 'superadmin@company.co', '$2b$11$Z9xV0Rh/BjRctSqbT2oEFO1XkR7UbH.2zpk8/TGmom6F/VujYNTX6', TRUE, 'Active');
+ ('SUPERADMIN-001', 'Regular', 'System Administrator', 'SuperAdmin', 'superadmin@company.com', '$2b$11$Z9xV0Rh/BjRctSqbT2oEFO1XkR7UbH.2zpk8/TGmom6F/VujYNTX6', TRUE, 'Active');
 
 INSERT INTO companies (company_name, is_sub_company, parent_company_id) VALUES
  ('Company Tech Pvt Ltd', FALSE, NULL),
@@ -247,3 +247,29 @@ INSERT INTO attendance_statuses (status, attendance_units, meaning) VALUES
 INSERT INTO ot_rounding_rules (from_minutes, to_minutes, rounded_minutes) VALUES
 (0,29,0),(30,59,30),(60,89,60),(90,119,90),(120,149,120),
 (150,179,150),(180,209,180),(210,239,210);
+
+-- A few starting people so a fresh install isn't just one lonely SuperAdmin —
+-- two more login-capable accounts (HR and Admin) so you can test the role
+-- hierarchy immediately, plus a couple of plain "User" employees (no login)
+-- to show what a normal employee record looks like. Same temporary password
+-- pattern as the bootstrap account — forced to change it on first login.
+--   HR:    priya.menon@company.com    / ChangeMe123!
+--   Admin: karthik.rajan@company.com  / ChangeMe123!
+INSERT INTO employees
+(emp_code, type, full_name, designation, department_id, company_id, shift_id, role_type,
+ email, password_hash, must_change_password, phone_number, location_id, status)
+VALUES
+('EMP-0002','Regular','Priya Menon','HR Executive',4,1,1,'HR',
+ 'priya.menon@company.com','$2b$11$0Lg8eT2GXWMsGDeNez9GzerQ1gE.b8s/VT9ftncRgyBwAg2IjngSK',TRUE,'+91 9800000031',1,'Active'),
+('EMP-0003','Regular','Karthik Rajan','Engineering Manager',2,1,1,'Admin',
+ 'karthik.rajan@company.com','$2b$11$0Lg8eT2GXWMsGDeNez9GzerQ1gE.b8s/VT9ftncRgyBwAg2IjngSK',TRUE,'+91 9800000032',2,'Active');
+
+-- Plain employees — no login, just HR records (Role Type stays the default 'User').
+INSERT INTO employees
+(emp_code, type, full_name, designation, department_id, company_id, shift_id, role_type,
+ email, phone_number, location_id, status)
+VALUES
+('EMP-0004','Regular','Ananya Iyer','Senior Product Analyst',1,1,1,'User',
+ 'ananya.iyer@company.com','+91 9800000033',1,'Active'),
+('EMP-0005','Contract','Zoya Khan','Financial Analyst',3,3,1,'User',
+ 'zoya.khan@company.com','+91 9800000034',3,'Active');

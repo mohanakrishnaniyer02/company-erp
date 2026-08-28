@@ -99,7 +99,7 @@ Now that you know the frontend's real URL:
 ## Step 6 — Test the whole thing
 
 1. Open your frontend URL in a browser (or send it to whoever's demoing).
-2. Log in with the bootstrap account: `superadmin@company.co` /
+2. Log in with the bootstrap account: `superadmin@company.com` /
    `ChangeMe123!` — you'll be forced to set a new password immediately,
    same as locally.
 3. Click around — Employees, Dashboard, Attendance Explorer.

@@ -27,9 +27,10 @@ Run `database/schema.sql` once. That's it — it creates every table and seeds:
   Paid Leave, Unpaid Leave, On Duty) and their OT rounding rules
 - **One working bootstrap login** (see [Authentication](#4-authentication--roles) below)
 
-No demo employees are seeded — the database starts clean, with just the
-reference data above and the one login below. Add real people through the
-app itself once you're in.
+No demo companies-only setup here — the database starts with real reference
+data (companies/departments/shifts/locations), a SuperAdmin login, two more
+sample login accounts (HR and Admin), and a couple of plain employee records.
+Add more real people through the app itself once you're in.
 
 ## 2. Backend (.NET 8 Web API)
 
@@ -78,14 +79,21 @@ match the port your API is actually running on.
 separate `users` table. A plain "User"-role employee simply has no password
 set and cannot log in at all.
 
-**Getting your first account**: `schema.sql` seeds exactly one working
-SuperAdmin so you're never locked out of a fresh install:
-```
-Email:    superadmin@company.co
-Password: ChangeMe123!
-```
-Logging in with this forces an immediate password change before anything
-else is reachable — this is deliberate, not a bug.
+**Getting your first account**: `schema.sql` seeds a working SuperAdmin so
+you're never locked out of a fresh install, plus two more login-capable
+accounts (HR and Admin) so you can test the role hierarchy immediately
+without creating anyone yourself:
+
+| Role | Email | Password |
+|---|---|---|
+| SuperAdmin | `superadmin@company.com` | `ChangeMe123!` |
+| HR | `priya.menon@company.com` | `ChangeMe123!` |
+| Admin | `karthik.rajan@company.com` | `ChangeMe123!` |
+
+Logging in with any of these forces an immediate password change before
+anything else is reachable — this is deliberate, not a bug. Two more plain
+employees (Ananya Iyer, Zoya Khan) are also seeded with no login, so the
+Employees list isn't empty either.
 
 **Creating further accounts**: an existing HR/Admin/SuperAdmin opens
 **Add Employee** (or edits an existing one), sets **Role Type** to
