@@ -272,4 +272,94 @@ VALUES
 ('EMP-0004','Regular','Ananya Iyer','Senior Product Analyst',1,1,1,'User',
  'ananya.iyer@company.com','+91 9800000033',1,'Active'),
 ('EMP-0005','Contract','Zoya Khan','Financial Analyst',3,3,1,'User',
- 'zoya.khan@company.com','+91 9800000034',3,'Active');
+ 'zoya.khan@company.com','+91 9800000034',3,'Active'),
+('EMP-0006','Regular','Arjun Kumar','Product Designer',1,1,1,'User',
+ 'arjun.kumar@company.com','+91 9800000035',2,'Active'),
+('EMP-0007','Regular','Divya Sharma','Finance Executive',3,1,1,'User',
+ 'divya.sharma@company.com','+91 9800000036',3,'Active'),
+('EMP-0008','Contract','Vikram Singh','QA Engineer',2,2,2,'User',
+ 'vikram.singh@company.com','+91 9800000037',1,'Active');
+
+-- A little more depth on two profiles, so the Bank Details / Proof / Address
+-- / Education tabs aren't empty in a demo either.
+INSERT INTO employee_bank_details (employee_id, bank_name, account_number, ifsc_code, branch_name, pan_number)
+SELECT employee_id, 'HDFC Bank', '50100234567890', 'HDFC0001234', 'Anna Nagar', 'ABCDE1234F'
+FROM employees WHERE emp_code = 'EMP-0004';
+INSERT INTO employee_bank_details (employee_id, bank_name, account_number, ifsc_code, branch_name, pan_number)
+SELECT employee_id, 'ICICI Bank', '00281234567', 'ICIC0000028', 'Indiranagar', 'FGHIJ5678K'
+FROM employees WHERE emp_code = 'EMP-0003';
+
+INSERT INTO employee_proof (employee_id, proof_type, proof_number)
+SELECT employee_id, 'PAN', 'ABCDE1234F' FROM employees WHERE emp_code = 'EMP-0004';
+INSERT INTO employee_proof (employee_id, proof_type, proof_number)
+SELECT employee_id, 'Aadhaar', 'XXXX XXXX 4521' FROM employees WHERE emp_code = 'EMP-0004';
+INSERT INTO employee_proof (employee_id, proof_type, proof_number)
+SELECT employee_id, 'PAN', 'FGHIJ5678K' FROM employees WHERE emp_code = 'EMP-0003';
+
+INSERT INTO employee_address (employee_id, address_type, address_line1, address_line2, address_line3, emergency_person, emergency_contact_number)
+SELECT employee_id, 'Current', '14 Lake View Apartments', 'Anna Nagar', 'Chennai, Tamil Nadu 600040', 'Suresh Iyer', '+91 9800000133'
+FROM employees WHERE emp_code = 'EMP-0004';
+INSERT INTO employee_address (employee_id, address_type, address_line1, address_line2, address_line3, emergency_person, emergency_contact_number)
+SELECT employee_id, 'Current', '22 MG Road', 'Indiranagar', 'Bengaluru, Karnataka 560038', 'Lakshmi Rajan', '+91 9800000232'
+FROM employees WHERE emp_code = 'EMP-0003';
+
+INSERT INTO employee_education (employee_id, institution_name, degree, completion_date)
+SELECT employee_id, 'Anna University', 'B.E. Computer Science', '2016-05-20' FROM employees WHERE emp_code = 'EMP-0004';
+INSERT INTO employee_education (employee_id, institution_name, degree, completion_date)
+SELECT employee_id, 'IIT Madras', 'M.Tech Software Engineering', '2019-06-15' FROM employees WHERE emp_code = 'EMP-0003';
+
+-- A working week of attendance (Mon 24 Aug – Fri 28 Aug 2026) across five
+-- employees, with a mix of full days, partial OT, a half day, and one
+-- absence — so the Dashboard KPIs and Attendance Explorer show real,
+-- varied numbers on a fresh install instead of empty states.
+CREATE TEMP TABLE demo_attendance_map AS
+WITH src(emp_code, attendance_date, actual_minutes, status_code, ot_minutes) AS (
+    VALUES
+    ('EMP-0002','2026-08-24'::date,510,'PRESENT',30), ('EMP-0002','2026-08-25'::date,480,'PRESENT',0),
+    ('EMP-0002','2026-08-26'::date,510,'PRESENT',30), ('EMP-0002','2026-08-27'::date,480,'PRESENT',0),
+    ('EMP-0002','2026-08-28'::date,240,'HALF_DAY',0),
+    ('EMP-0003','2026-08-24'::date,540,'PRESENT',60), ('EMP-0003','2026-08-25'::date,510,'PRESENT',30),
+    ('EMP-0003','2026-08-26'::date,510,'PRESENT',30), ('EMP-0003','2026-08-27'::date,480,'PRESENT',0),
+    ('EMP-0003','2026-08-28'::date,510,'PRESENT',30),
+    ('EMP-0004','2026-08-24'::date,480,'PRESENT',0),   ('EMP-0004','2026-08-25'::date,510,'PRESENT',30),
+    ('EMP-0004','2026-08-26'::date,480,'PRESENT',0),   ('EMP-0004','2026-08-27'::date,0,'ABSENT',0),
+    ('EMP-0004','2026-08-28'::date,510,'PRESENT',30),
+    ('EMP-0005','2026-08-24'::date,510,'PRESENT',30),  ('EMP-0005','2026-08-25'::date,510,'PRESENT',30),
+    ('EMP-0005','2026-08-26'::date,480,'PRESENT',0),   ('EMP-0005','2026-08-27'::date,510,'PRESENT',30),
+    ('EMP-0005','2026-08-28'::date,480,'PRESENT',0),
+    ('EMP-0006','2026-08-24'::date,480,'PRESENT',0),   ('EMP-0006','2026-08-25'::date,240,'HALF_DAY',0),
+    ('EMP-0006','2026-08-26'::date,510,'PRESENT',30),  ('EMP-0006','2026-08-27'::date,510,'PRESENT',30),
+    ('EMP-0006','2026-08-28'::date,480,'PRESENT',0)
+),
+inserted AS (
+    INSERT INTO attendance_entries
+        (employee_id, attendance_date, shift_id, attendance_status_id, entry_type,
+         actual_work_minutes, required_work_minutes, calculated_ot_minutes, rounded_ot_minutes, approved_ot_minutes)
+    SELECT e.employee_id, s.attendance_date, 1, st.attendance_status_id, 'Biometric',
+           s.actual_minutes, 480, s.ot_minutes, s.ot_minutes, s.ot_minutes
+    FROM src s
+    JOIN employees e ON e.emp_code = s.emp_code
+    JOIN attendance_statuses st ON st.status = s.status_code
+    RETURNING attendance_id, employee_id, attendance_date
+)
+SELECT i.attendance_id, e.emp_code, i.attendance_date, i.employee_id
+FROM inserted i JOIN employees e ON e.employee_id = i.employee_id;
+
+-- Matching In/Out punches for every entry that isn't an absence. Times are
+-- picked so they reproduce the actual_work_minutes above once lunch
+-- (13:00–13:30) is excluded: 09:30–18:00 = 480, 09:30–18:30 = 510,
+-- 09:30–19:00 = 540, 09:30–14:00 = 240 (half day).
+INSERT INTO attendance_punches (attendance_id, sequence_no, punch_in, punch_out)
+SELECT m.attendance_id, 1,
+    '09:30'::time,
+    CASE
+        WHEN a.actual_work_minutes = 240 THEN '14:00'::time
+        WHEN a.actual_work_minutes = 480 THEN '18:00'::time
+        WHEN a.actual_work_minutes = 510 THEN '18:30'::time
+        WHEN a.actual_work_minutes = 540 THEN '19:00'::time
+    END
+FROM demo_attendance_map m
+JOIN attendance_entries a ON a.attendance_id = m.attendance_id
+WHERE a.actual_work_minutes > 0;
+
+DROP TABLE demo_attendance_map;
