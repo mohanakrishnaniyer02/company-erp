@@ -8,14 +8,14 @@ export default function Login() {
   const { login } = useAuth()
   const navigate = useNavigate()
 
-  const [email, setEmail] = useState('')
+  const [empCode, setEmpCode] = useState('')
   const [password, setPassword] = useState('')
 
   async function handleLogin(e) {
     e.preventDefault()
     setError('')
     try {
-      await login(email, password)
+      await login(empCode, password)
       navigate('/dashboard')
     } catch (err) {
       setError(err.response?.data?.message || 'Login failed. Check your credentials.')
@@ -31,10 +31,10 @@ export default function Login() {
           {error && <div className="auth-error">{error}</div>}
           <form onSubmit={handleLogin}>
             <h2>Welcome back</h2>
-            <p className="sub">Log in with your work email to continue.</p>
+            <p className="sub">Log in with your Employee ID to continue.</p>
             <div className="field">
-              <label>Email address</label>
-              <input type="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="you@company.com" />
+              <label>Employee ID</label>
+              <input className="mono" required value={empCode} onChange={e => setEmpCode(e.target.value)} placeholder="e.g. EMP-0002" />
             </div>
             <div className="field">
               <label>Password</label>

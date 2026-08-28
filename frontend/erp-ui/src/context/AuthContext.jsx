@@ -9,8 +9,8 @@ export function AuthProvider({ children }) {
     return raw ? JSON.parse(raw) : null
   })
 
-  async function login(email, password) {
-    const { data } = await api.post('/auth/login', { email, password })
+  async function login(empCode, password) {
+    const { data } = await api.post('/auth/login', { empCode, password })
     persist(data)
     return data
   }

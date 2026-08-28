@@ -36,7 +36,7 @@ public class AuthController : ControllerBase
     [HttpPost("login")]
     public async Task<ActionResult<AuthResponse>> Login(LoginRequest req)
     {
-        var emp = await _db.Employees.FirstOrDefaultAsync(e => e.Email == req.Email && e.PasswordHash != null);
+        var emp = await _db.Employees.FirstOrDefaultAsync(e => e.EmpCode == req.EmpCode && e.PasswordHash != null);
         if (emp == null || !BCrypt.Net.BCrypt.Verify(req.Password, emp.PasswordHash))
             return Unauthorized(new { message = "Invalid email or password." });
 

@@ -84,11 +84,11 @@ you're never locked out of a fresh install, plus two more login-capable
 accounts (HR and Admin) so you can test the role hierarchy immediately
 without creating anyone yourself:
 
-| Role | Email | Password |
+| Role | Employee ID | Password |
 |---|---|---|
-| SuperAdmin | `superadmin@company.com` | `ChangeMe123!` |
-| HR | `priya.menon@company.com` | `ChangeMe123!` |
-| Admin | `karthik.rajan@company.com` | `ChangeMe123!` |
+| SuperAdmin | `SUPERADMIN-001` | `ChangeMe123!` |
+| HR | `EMP-0002` | `ChangeMe123!` |
+| Admin | `EMP-0003` | `ChangeMe123!` |
 
 Logging in with any of these forces an immediate password change before
 anything else is reachable — this is deliberate, not a bug. Two more plain

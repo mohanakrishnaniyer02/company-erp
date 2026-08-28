@@ -18,6 +18,7 @@ function formatMinutes(value) {
 export default function Attendance() {
   const today = new Date().toISOString().slice(0,10)
   const [employees,setEmployees] = useState([]), [shifts,setShifts] = useState([]), [statuses,setStatuses] = useState([])
+  const [departments,setDepartments] = useState([]), [departmentFilter,setDepartmentFilter] = useState('')
   const [entries,setEntries] = useState([]), [roundingRules,setRoundingRules] = useState([])
   const [date,setDate] = useState(today), [employeeId,setEmployeeId] = useState('')
   const [shiftId,setShiftId] = useState(''), [attendanceStatusId,setAttendanceStatusId] = useState('')
@@ -30,9 +31,9 @@ export default function Attendance() {
 
   useEffect(() => {
     Promise.all([
-      api.get('/employees'), api.get('/shifts'), api.get('/attendance/statuses'), api.get('/attendance/rounding-rules')
-    ]).then(([e,s,a,r]) => {
-      setEmployees(e.data); setShifts(s.data); setStatuses(a.data); setRoundingRules(r.data)
+      api.get('/employees'), api.get('/shifts'), api.get('/attendance/statuses'), api.get('/attendance/rounding-rules'), api.get('/departments')
+    ]).then(([e,s,a,r,d]) => {
+      setEmployees(e.data); setShifts(s.data); setStatuses(a.data); setRoundingRules(r.data); setDepartments(d.data)
       const present=a.data.find(x=>x.status==='PRESENT'); if(present) setAttendanceStatusId(String(present.attendanceStatusId))
     }).catch(()=>setError('Could not load attendance masters.'))
   },[])
@@ -139,10 +140,16 @@ export default function Attendance() {
         <div className="form-grid">
           <div className="section-label">Attendance Details</div>
           <div className="field"><label>Date *</label><input type="date" value={date} onChange={e=>setDate(e.target.value)}/></div>
+          <div className="field"><label>Department</label>
+            <select value={departmentFilter} onChange={e=>{setDepartmentFilter(e.target.value); setEmployeeId('')}}>
+              <option value="">All Departments</option>
+              {departments.map(d=><option key={d.departmentId} value={d.departmentName}>{d.departmentName}</option>)}
+            </select>
+          </div>
           <div className="field"><label>Employee *</label>
             <select value={employeeId} onChange={e=>chooseEmployee(e.target.value)}>
               <option value="">Select employee…</option>
-              {employees.filter(e=>e.status==='Active').map(e=><option key={e.employeeId} value={e.employeeId}>{e.fullName} — {e.empCode}</option>)}
+              {employees.filter(e=>e.status==='Active' && (!departmentFilter || e.department===departmentFilter)).map(e=><option key={e.employeeId} value={e.employeeId}>{e.fullName} — {e.empCode}</option>)}
             </select>
           </div>
           <div className="field"><label>Employee ID</label><input className="mono" value={selectedEmployee?.empCode||''} disabled/></div>

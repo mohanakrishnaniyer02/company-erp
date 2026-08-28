@@ -55,33 +55,44 @@ export default function Shifts(){
     {success&&<div className="success-note" style={{marginBottom:16}}>{success}</div>}
 
     {showForm && (
-      <form className="card" onSubmit={save} style={{marginBottom:20}}>
-        <h3>{editingId?'Edit Shift':'Add Shift'}</h3><p className="card-sub">Work and OT values are stored as minutes.</p>
-        <div className="form-grid two">
-          <div className="field"><label>Shift ID</label><input value={editingId||'Auto-generated'} disabled/></div>
-          <div className="field"><label>Shift Code *</label><input required value={form.shiftCode} onChange={e=>set('shiftCode',e.target.value)}/></div>
-          <div className="field" style={{gridColumn:'1/-1'}}><label>Shift Name *</label><input required value={form.shiftName} onChange={e=>set('shiftName',e.target.value)}/></div>
-          <div className="section-label">Timing</div>
-          <div className="field"><label>Shift Start</label><input type="time" value={form.startTime} onChange={e=>set('startTime',e.target.value)}/></div>
-          <div className="field"><label>Shift End</label><input type="time" value={form.endTime} onChange={e=>set('endTime',e.target.value)}/></div>
-          <div className="field"><label>Lunch Start</label><input type="time" value={form.lunchStartTime} onChange={e=>set('lunchStartTime',e.target.value)}/></div>
-          <div className="field"><label>Lunch End</label><input type="time" value={form.lunchEndTime} onChange={e=>set('lunchEndTime',e.target.value)}/></div>
-          <div className="section-label">Rules</div>
-          <div className="field"><label>Grace In (min)</label><input type="number" min="0" value={form.graceInMinutes} onChange={e=>set('graceInMinutes',e.target.value)}/></div>
-          <div className="field"><label>Grace Out (min)</label><input type="number" min="0" value={form.graceOutMinutes} onChange={e=>set('graceOutMinutes',e.target.value)}/></div>
-          <div className="field"><label>Late After (min)</label><input type="number" min="0" value={form.lateAfterMinutes} onChange={e=>set('lateAfterMinutes',e.target.value)}/></div>
-          <div className="field"><label>Early Out (min)</label><input type="number" min="0" value={form.earlyOutMinutes} onChange={e=>set('earlyOutMinutes',e.target.value)}/></div>
-          <div className="field"><label>Minimum Work (min)</label><input type="number" min="0" value={form.minimumWorkMinutes} onChange={e=>set('minimumWorkMinutes',e.target.value)}/></div>
-          <div className="field"><label>Half Day (min)</label><input type="number" min="0" value={form.halfDayMinutes} onChange={e=>set('halfDayMinutes',e.target.value)}/></div>
-          <div className="field"><label>Full Day (min)</label><input type="number" min="1" value={form.fullDayMinutes} onChange={e=>set('fullDayMinutes',e.target.value)}/></div>
-          <div className="field"><label>OT Allowed</label><select value={form.otAllowed?'Yes':'No'} onChange={e=>set('otAllowed',e.target.value==='Yes')}><option>Yes</option><option>No</option></select></div>
-          <div className="field"><label>OT Start After (min)</label><input type="number" min="0" value={form.otStartAfterMinutes} onChange={e=>set('otStartAfterMinutes',e.target.value)}/></div>
-          <div className="field"><label>Night Shift</label><select value={form.isNightShift?'Yes':'No'} onChange={e=>set('isNightShift',e.target.value==='Yes')}><option>No</option><option>Yes</option></select></div>
-          <div className="field"><label>Status</label><select value={form.status} onChange={e=>set('status',e.target.value)}><option>Active</option><option>Inactive</option></select></div>
+      <div className="modal-overlay" onClick={reset}>
+        <div className="modal-box" onClick={e=>e.stopPropagation()}>
+          <div className="modal-head">
+            <h3>{editingId?'Edit Shift':'Add Shift'}</h3>
+            <button type="button" className="icon-btn" onClick={reset} title="Close">✕</button>
+          </div>
+          <form onSubmit={save}>
+            <p className="card-sub">Work and OT values are stored as minutes.</p>
+            <div className="form-grid two">
+              <div className="field"><label>Shift ID</label><input value={editingId||'Auto-generated'} disabled/></div>
+              <div className="field"><label>Shift Code *</label><input required value={form.shiftCode} onChange={e=>set('shiftCode',e.target.value)}/></div>
+              <div className="field" style={{gridColumn:'1/-1'}}><label>Shift Name *</label><input required value={form.shiftName} onChange={e=>set('shiftName',e.target.value)}/></div>
+              <div className="section-label">Timing</div>
+              <div className="field"><label>Shift Start</label><input type="time" value={form.startTime} onChange={e=>set('startTime',e.target.value)}/></div>
+              <div className="field"><label>Shift End</label><input type="time" value={form.endTime} onChange={e=>set('endTime',e.target.value)}/></div>
+              <div className="field"><label>Lunch Start</label><input type="time" value={form.lunchStartTime} onChange={e=>set('lunchStartTime',e.target.value)}/></div>
+              <div className="field"><label>Lunch End</label><input type="time" value={form.lunchEndTime} onChange={e=>set('lunchEndTime',e.target.value)}/></div>
+              <div className="section-label">Rules</div>
+              <div className="field"><label>Grace In (min)</label><input type="number" min="0" value={form.graceInMinutes} onChange={e=>set('graceInMinutes',e.target.value)}/></div>
+              <div className="field"><label>Grace Out (min)</label><input type="number" min="0" value={form.graceOutMinutes} onChange={e=>set('graceOutMinutes',e.target.value)}/></div>
+              <div className="field"><label>Late After (min)</label><input type="number" min="0" value={form.lateAfterMinutes} onChange={e=>set('lateAfterMinutes',e.target.value)}/></div>
+              <div className="field"><label>Early Out (min)</label><input type="number" min="0" value={form.earlyOutMinutes} onChange={e=>set('earlyOutMinutes',e.target.value)}/></div>
+              <div className="field"><label>Minimum Work (min)</label><input type="number" min="0" value={form.minimumWorkMinutes} onChange={e=>set('minimumWorkMinutes',e.target.value)}/></div>
+              <div className="field"><label>Half Day (min)</label><input type="number" min="0" value={form.halfDayMinutes} onChange={e=>set('halfDayMinutes',e.target.value)}/></div>
+              <div className="field"><label>Full Day (min)</label><input type="number" min="1" value={form.fullDayMinutes} onChange={e=>set('fullDayMinutes',e.target.value)}/></div>
+              <div className="field"><label>OT Allowed</label><select value={form.otAllowed?'Yes':'No'} onChange={e=>set('otAllowed',e.target.value==='Yes')}><option>Yes</option><option>No</option></select></div>
+              <div className="field"><label>OT Start After (min)</label><input type="number" min="0" value={form.otStartAfterMinutes} onChange={e=>set('otStartAfterMinutes',e.target.value)}/></div>
+              <div className="field"><label>Night Shift</label><select value={form.isNightShift?'Yes':'No'} onChange={e=>set('isNightShift',e.target.value==='Yes')}><option>No</option><option>Yes</option></select></div>
+              <div className="field"><label>Status</label><select value={form.status} onChange={e=>set('status',e.target.value)}><option>Active</option><option>Inactive</option></select></div>
+            </div>
+            <p className="field-help">Full day: {mins(form.fullDayMinutes)} · Minimum work: {mins(form.minimumWorkMinutes)}</p>
+            <div style={{display:'flex', justifyContent:'flex-end', gap:10, marginTop:20, paddingTop:16, borderTop:'1px solid var(--line)'}}>
+              <button type="button" className="btn-ghost" onClick={reset}>Cancel</button>
+              <button className="btn-blue">Save Shift</button>
+            </div>
+          </form>
         </div>
-        <p className="field-help">Full day: {mins(form.fullDayMinutes)} · Minimum work: {mins(form.minimumWorkMinutes)}</p>
-        <div className="footer-actions" style={{padding:'16px 0 0'}}><button type="button" className="btn-ghost" onClick={reset}>Cancel</button><button className="btn-blue">Save Shift</button></div>
-      </form>
+      </div>
     )}
 
     <div className="table-card"><div className="table-scroll"><table className="emp-table">

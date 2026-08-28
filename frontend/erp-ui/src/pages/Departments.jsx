@@ -72,35 +72,42 @@ export default function Departments() {
       {success && <div className="success-note" style={{marginBottom:16}}>{success}</div>}
 
       {showForm && (
-        <form className="card" onSubmit={save} style={{marginBottom:20}}>
-          <h3>{editingId ? 'Edit Department' : 'Add Department'}</h3>
-          <p className="card-sub">All work-hour values are stored in minutes.</p>
-          <div className="form-grid two">
-            <div className="field" style={{gridColumn:'1/-1'}}>
-              <label>Department Name <span className="req">*</span></label>
-              <input required value={form.departmentName} onChange={e=>set('departmentName',e.target.value)} />
+        <div className="modal-overlay" onClick={reset}>
+          <div className="modal-box" onClick={e=>e.stopPropagation()}>
+            <div className="modal-head">
+              <h3>{editingId ? 'Edit Department' : 'Add Department'}</h3>
+              <button type="button" className="icon-btn" onClick={reset} title="Close">✕</button>
             </div>
-            <div className="field">
-              <label>OT Allowed</label>
-              <select value={form.otAllowed ? 'Yes':'No'} onChange={e=>set('otAllowed',e.target.value==='Yes')}>
-                <option value="No">No</option><option value="Yes">Yes</option>
-              </select>
-            </div>
-            {form.otAllowed && <>
-              <div className="field"><label>Min OT Time (minutes)</label><input type="number" min="0" value={form.minOtMinutes} onChange={e=>set('minOtMinutes',e.target.value)} /></div>
-              <div className="field"><label>Max OT Time (minutes)</label><input type="number" min="0" value={form.maxOtMinutes} onChange={e=>set('maxOtMinutes',e.target.value)} /></div>
-            </>}
-            <div className="field">
-              <label>Required Work Hours (minutes) <span className="req">*</span></label>
-              <input type="number" min="1" required value={form.requiredWorkMinutes} onChange={e=>set('requiredWorkMinutes',e.target.value)} />
-              <small className="field-help">{mins(form.requiredWorkMinutes)} per payable day</small>
-            </div>
+            <form onSubmit={save}>
+              <p className="card-sub">All work-hour values are stored in minutes.</p>
+              <div className="form-grid two">
+                <div className="field" style={{gridColumn:'1/-1'}}>
+                  <label>Department Name <span className="req">*</span></label>
+                  <input required value={form.departmentName} onChange={e=>set('departmentName',e.target.value)} />
+                </div>
+                <div className="field">
+                  <label>OT Allowed</label>
+                  <select value={form.otAllowed ? 'Yes':'No'} onChange={e=>set('otAllowed',e.target.value==='Yes')}>
+                    <option value="No">No</option><option value="Yes">Yes</option>
+                  </select>
+                </div>
+                {form.otAllowed && <>
+                  <div className="field"><label>Min OT Time (minutes)</label><input type="number" min="0" value={form.minOtMinutes} onChange={e=>set('minOtMinutes',e.target.value)} /></div>
+                  <div className="field"><label>Max OT Time (minutes)</label><input type="number" min="0" value={form.maxOtMinutes} onChange={e=>set('maxOtMinutes',e.target.value)} /></div>
+                </>}
+                <div className="field">
+                  <label>Required Work Hours (minutes) <span className="req">*</span></label>
+                  <input type="number" min="1" required value={form.requiredWorkMinutes} onChange={e=>set('requiredWorkMinutes',e.target.value)} />
+                  <small className="field-help">{mins(form.requiredWorkMinutes)} per payable day</small>
+                </div>
+              </div>
+              <div style={{display:'flex', justifyContent:'flex-end', gap:10, marginTop:20, paddingTop:16, borderTop:'1px solid var(--line)'}}>
+                <button type="button" className="btn-ghost" onClick={reset}>Cancel</button>
+                <button className="btn-blue" type="submit">{editingId ? 'Update Department':'Save Department'}</button>
+              </div>
+            </form>
           </div>
-          <div className="footer-actions" style={{padding:'16px 0 0', marginTop:8}}>
-            <button type="button" className="btn-ghost" onClick={reset}>Cancel</button>
-            <button className="btn-blue" type="submit">{editingId ? 'Update Department':'Save Department'}</button>
-          </div>
-        </form>
+        </div>
       )}
 
       <div className="table-card">
