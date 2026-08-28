@@ -62,7 +62,7 @@ export default function Dashboard() {
   } : null
 
   return <>
-    <Topbar crumbs={<b>Dashboard</b>}/>
+    <Topbar/>
     <div className="page-head">
       <div><h1>Dashboard</h1><p>Workforce, attendance and payroll-oriented work summary.</p></div>
     </div>

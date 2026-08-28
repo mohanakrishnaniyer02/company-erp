@@ -39,7 +39,6 @@ export default function Topbar({ crumbs, search, onSearch }) {
             <div className="account-dropdown">
               <div className="account-dropdown-head">
                 <div className="name">{user?.fullName}</div>
-                <div className="role">{user?.role}</div>
               </div>
               <button type="button" onClick={() => { setMenuOpen(false); navigate('/change-password') }}>Change password</button>
               <button type="button" onClick={handleLogout}>← Log out</button>

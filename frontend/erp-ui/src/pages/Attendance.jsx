@@ -128,7 +128,7 @@ export default function Attendance() {
   function chooseEmployee(v){setEmployeeId(v)}
 
   return <>
-    <Topbar crumbs={<b>Daily Attendance Entry</b>}/>
+    <Topbar/>
     <div className="page-head">
       <div><h1>Daily Attendance Entry</h1><p>Record attendance, punches and payroll-ready work/OT calculations.</p></div>
     </div>

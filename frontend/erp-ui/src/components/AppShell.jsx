@@ -9,9 +9,8 @@ export default function AppShell() {
 
   return (
     <div id="app-grid">
+      <button type="button" className="sidebar-toggle-floating" onClick={() => setCollapsed(c => !c)} title={collapsed ? 'Show menu' : 'Hide menu'}>☰</button>
       <div className={'sidebar' + (collapsed ? ' collapsed' : '')}>
-        <button type="button" className="sidebar-toggle" onClick={() => setCollapsed(c => !c)} title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}>☰</button>
-        <div className="brand-mark"><div className="sq">C</div><span>Company HR</span></div>
         <NavLink to="/dashboard" className={({isActive}) => 'side-link' + (isActive ? ' active' : '')} title="Dashboard">
           <span className="ic">▢</span><span className="label">Dashboard</span>
         </NavLink>
@@ -32,7 +31,7 @@ export default function AppShell() {
       </div>
       <div className="main">
         <Outlet />
-        <footer className="app-footer">
+        <footer className="app-footer" style={{left: collapsed ? 64 : 196}}>
           <span>© {new Date().getFullYear()} Company HR. All rights reserved.</span>
           <span className="app-footer-links">
             <a href="mailto:support@company.com">Report an issue</a>

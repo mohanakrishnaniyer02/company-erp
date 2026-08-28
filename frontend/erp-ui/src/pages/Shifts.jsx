@@ -46,7 +46,7 @@ export default function Shifts(){
     try{await api.delete(`/shifts/${s.shiftId}`);setSuccess(`${s.shiftName} deleted.`);load()}catch(err){setError(err.response?.data?.message||'Could not delete shift.')}
   }
   return <>
-    <Topbar crumbs={<b>Shifts</b>}/>
+    <Topbar/>
     <div className="page-head">
       <div><h1>Shifts</h1><p>Master configuration used by employee profiles and daily attendance.</p></div>
       <button type="button" className="btn-blue" onClick={showForm?reset:startAdd}>{showForm?'Cancel':'＋ Add Shift'}</button>

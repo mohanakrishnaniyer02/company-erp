@@ -61,7 +61,7 @@ export default function EmployeeList() {
 
   return (
     <>
-      <Topbar crumbs={<b>Employees</b>} search={search} onSearch={setSearch} />
+      <Topbar search={search} onSearch={setSearch} />
 
       <div className="page-head">
         <div><h1>Employees</h1><p>All employees across the company and its sub-entities.</p></div>

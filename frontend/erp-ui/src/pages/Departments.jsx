@@ -62,7 +62,7 @@ export default function Departments() {
 
   return (
     <>
-      <Topbar crumbs={<b>Departments</b>} />
+      <Topbar />
       <div className="page-head">
         <div><h1>Departments</h1><p>Configure required work hours and department OT policy.</p></div>
         <button type="button" className="btn-blue" onClick={showForm?reset:startAdd}>{showForm?'Cancel':'＋ Add Department'}</button>
