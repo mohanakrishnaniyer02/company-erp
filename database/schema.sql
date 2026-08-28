@@ -247,16 +247,3 @@ INSERT INTO attendance_statuses (status, attendance_units, meaning) VALUES
 INSERT INTO ot_rounding_rules (from_minutes, to_minutes, rounded_minutes) VALUES
 (0,29,0),(30,59,30),(60,89,60),(90,119,90),(120,149,120),
 (150,179,150),(180,209,180),(210,239,210);
-
-INSERT INTO employees
-(emp_code, type, full_name, designation, department_id, company_id, manager_id, shift_id, role_type,
- date_of_joining, date_of_birth, location_id, email, phone_number, marital_status, status)
-VALUES
-('EMP-2021-0007','Regular','Karthik Rajan','Engineering Manager',2,1,NULL,1,'Admin','2019-06-11','1988-02-10',2,'karthik.r@company.co','+91 9800000002','Married','Active'),
-('EMP-2026-0143','Regular','Ananya Iyer','Senior Product Analyst',1,1,1,1,'User','2023-03-04','1994-07-12',1,'ananya.i@company.co','+91 9800000021','Single','Active'),
-('EMP-2024-0088','Contract','Zoya Khan','Financial Analyst',3,3,NULL,1,'User','2024-01-15','1996-11-02',3,'zoya.k@company.co','+91 9800000045','Single','Active'),
-('EMP-2022-0031','Regular','Rahul Verma','HR Executive',4,1,NULL,1,'HR','2020-09-01','1991-05-19',1,'rahul.v@company.co','+91 9800000078','Married','Inactive'),
-('EMP-2025-0102','Contract','Meera Nair','QA Engineer',2,2,1,2,'User','2025-02-20','1997-08-30',4,'meera.n@company.co','+91 9800000019','Single','Active');
-
-INSERT INTO employee_shift_assignment (employee_id, shift_id, effective_from) VALUES
-(1,1,'2019-06-11'),(2,1,'2023-03-04'),(3,1,'2024-01-15'),(4,1,'2020-09-01'),(5,2,'2025-02-20');

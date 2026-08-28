@@ -25,8 +25,11 @@ Run `database/schema.sql` once. That's it — it creates every table and seeds:
 - 3 companies, 4 locations, 4 departments, 2 shift templates (Day/Night)
 - 8 attendance status types (Present, Absent, Half Day, Weekly Off, Holiday,
   Paid Leave, Unpaid Leave, On Duty) and their OT rounding rules
-- 5 sample employees
 - **One working bootstrap login** (see [Authentication](#4-authentication--roles) below)
+
+No demo employees are seeded — the database starts clean, with just the
+reference data above and the one login below. Add real people through the
+app itself once you're in.
 
 ## 2. Backend (.NET 8 Web API)
 
