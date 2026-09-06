@@ -52,7 +52,7 @@ export default function Attendance() {
 
   // ---- entry modal's own form state ----
   const [editingId,setEditingId] = useState(null)
-  const [formEmployeeId,setFormEmployeeId] = useState(''), [date,setDate] = useState(today)
+  const [formEmployeeId,setFormEmployeeId] = useState(''), [formDepartmentFilter,setFormDepartmentFilter] = useState(''), [date,setDate] = useState(today)
   const [shiftId,setShiftId] = useState(''), [attendanceStatusId,setAttendanceStatusId] = useState('')
   const [entryType,setEntryType] = useState('User'), [punches,setPunches] = useState(emptyPunches)
   const [calc,setCalc] = useState({actualWorkMinutes:0,requiredWorkMinutes:0,calculatedOtMinutes:0,roundedOtMinutes:0,approvedOtMinutes:0})
@@ -94,7 +94,7 @@ export default function Attendance() {
     return s
   },[entries,employeeId])
   function resetForm(){
-    setEditingId(null); setFormEmployeeId(employeeId||''); setDate(today); setShiftId(''); setEntryType('User')
+    setEditingId(null); setFormEmployeeId(employeeId||''); setFormDepartmentFilter(departmentFilter||''); setDate(today); setShiftId(''); setEntryType('User')
     const present=statuses.find(x=>x.status==='PRESENT'); setAttendanceStatusId(present?String(present.attendanceStatusId):'')
     setPunches(emptyPunches); setApprovedOt(''); setReason(''); setComments('')
     setCalc({actualWorkMinutes:0,requiredWorkMinutes:0,calculatedOtMinutes:0,roundedOtMinutes:0,approvedOtMinutes:0})
@@ -106,7 +106,9 @@ export default function Attendance() {
     setError(''); setSuccess(''); setShowEntryModal(true)
   }
   function openEdit(a){
-    setEditingId(a.attendanceId); setFormEmployeeId(String(a.employeeId)); setDate(a.attendanceDate)
+    setEditingId(a.attendanceId); setFormEmployeeId(String(a.employeeId))
+    const emp = employees.find(e=>e.employeeId===a.employeeId)
+    setFormDepartmentFilter(emp?.department||''); setDate(a.attendanceDate)
     setShiftId(String(a.shiftId))
     const st = statuses.find(x=>x.status===a.attendanceType); setAttendanceStatusId(st?String(st.attendanceStatusId):'')
     setEntryType(a.entryType)
@@ -269,10 +271,16 @@ export default function Attendance() {
           <form onSubmit={save}>
             <div className="form-grid">
               <div className="field"><label>Date *</label><input type="date" value={date} onChange={e=>setDate(e.target.value)}/><small className="field-help">{weekdayOf(date)}</small></div>
+              <div className="field"><label>Department</label>
+                <select value={formDepartmentFilter} onChange={e=>{setFormDepartmentFilter(e.target.value); setFormEmployeeId('')}} disabled={!!editingId}>
+                  <option value="">All Departments</option>
+                  {departments.map(d=><option key={d.departmentId} value={d.departmentName}>{d.departmentName}</option>)}
+                </select>
+              </div>
               <div className="field"><label>Employee *</label>
                 <select value={formEmployeeId} onChange={e=>setFormEmployeeId(e.target.value)} disabled={!!editingId}>
                   <option value="">Select employee…</option>
-                  {employees.filter(e=>e.status==='Active').map(e=><option key={e.employeeId} value={e.employeeId}>{e.fullName} — {e.empCode}</option>)}
+                  {employees.filter(e=>e.status==='Active' && (!formDepartmentFilter || e.department===formDepartmentFilter)).map(e=><option key={e.employeeId} value={e.employeeId}>{e.fullName} — {e.empCode}</option>)}
                 </select>
               </div>
               <div className="field"><label>Employee ID</label><input className="mono" value={formSelectedEmployee?.empCode||''} disabled/></div>
