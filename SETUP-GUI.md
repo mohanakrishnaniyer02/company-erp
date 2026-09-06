@@ -28,8 +28,8 @@ equivalent — but VS Code's one-click **Tasks** get you as close as possible).
    copy everything, and paste it into the Query Tool panel).
 7. Click the ▶ **Execute/Play** button (or press F5).
 8. In the left tree, right-click **Tables** under `company_erp` → **Refresh**
-   — you should see `employees`, `users`, `companies`, etc. Expand any table
-   → **View/Edit Data → All Rows** to confirm the seed data loaded.
+   — you should see `employees`, `companies`, `departments`, etc. Expand any
+   table → **View/Edit Data → All Rows** to confirm the seed data loaded.
 
 Database is ready. No terminal used.
 
@@ -69,8 +69,9 @@ Database is ready. No terminal used.
 8. Click the green ▶ **Run** button (or press F5).
 9. Visual Studio builds the project and opens your browser to the Swagger
    page automatically (`http://localhost:5205/swagger`) — this is your API's
-   interactive test console. Try `POST /api/auth/signup` here to confirm the
-   database connection works before moving to the frontend.
+   interactive test console. Try `POST /api/auth/login` here with
+   `SUPERADMIN-001` / `ChangeMe123!` to confirm the database connection
+   works before moving to the frontend.
 
 *(Don't have Visual Studio / not on Windows? Use VS Code instead — open the
 `backend/ErpApi` folder, install the **C# Dev Kit** extension, then use the
@@ -141,7 +142,7 @@ Visual Studio (Step 2) and that the port in `.env` (Step 3) matches it.
 | Symptom | Where to look |
 |---|---|
 | Frontend shows "Could not load dashboard stats" | Visual Studio — is the API still running (Step 2.8)? Check the Output window for errors. |
-| Signup/Login fails | pgAdmin — Query Tool → `SELECT * FROM users;` to confirm the table exists and the connection string password (Step 2.4) is correct. |
+| Login fails | pgAdmin — Query Tool → `SELECT * FROM employees WHERE password_hash IS NOT NULL;` to confirm login-capable accounts exist and the connection string password (Step 2.4) is correct. |
 | Blank white page in browser | VS Code — check the "Start Dev Server" task panel for red error text. |
 | Swagger page won't open | Visual Studio — confirm the dropdown next to Run says "ErpApi (http)", not "IIS Express". |
 
@@ -188,16 +189,19 @@ are set). The startup check only fires if User Secrets is *not* set up.
 
 ### What else changed
 
-- **Signup no longer lets you pick Admin/SuperAdmin** — except for the very
-  first account ever created on a fresh database (so you can bootstrap your
-  own admin without touching the database directly). Every signup after that
-  is limited to `User` or `HR`.
-- **To create an Admin or SuperAdmin account after that first one**, log in
-  as an existing Admin/SuperAdmin and call `POST /api/auth/create-user`
-  from the Swagger page (Authorize with your Bearer token first) — same
-  fields as signup, but any role is allowed since it's admin-gated.
-- **Bank Details and Proof/Documents (PAN, Aadhaar, account numbers) are now
-  only viewable by HR, Admin, or SuperAdmin** — a plain `User` account can no
-  longer see anyone's bank or ID information.
-- Passwords now need to be **8+ characters with at least one letter and one
+- **There's no signup at all anymore.** `schema.sql` seeds one working
+  SuperAdmin (`SUPERADMIN-001` / `ChangeMe123!`) so a fresh install is never
+  locked out. Every further account is created through the app itself, not
+  an API call.
+- **Login uses Employee ID, not email** — e.g. `SUPERADMIN-001`, `EMP-0002`.
+- **To create an Admin, HR, or SuperAdmin account**, log in as an existing
+  HR/Admin/SuperAdmin, open **Add Employee**, set **Role Type**, and a
+  **Password** field appears — no Swagger/API call needed, and no forced
+  password change on their first login either; whatever password is set
+  there is what they keep using (they can change it voluntarily anytime via
+  the account menu).
+- **Bank Details and Proof/Documents (PAN, Aadhaar, account numbers) are
+  only viewable by HR, Admin, or SuperAdmin** — a plain `User` account can
+  no longer see anyone's bank or ID information.
+- Passwords need to be **8+ characters with at least one letter and one
   number**, enforced on the server (not just the placeholder text in the UI).
