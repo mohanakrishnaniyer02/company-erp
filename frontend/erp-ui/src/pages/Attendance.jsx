@@ -23,12 +23,18 @@ function weekdayOf(dateStr) {
 // Break time between consecutive punch pairs — e.g. lunch — derived purely from
 // the gap between one Out and the next In. Correctly reflects however long the
 // break actually was, regardless of the shift's configured lunch window.
-function totalBreakMinutes(punches) {
-  const valid = (punches||[]).filter(p=>p.punchIn && p.punchOut).slice().sort((a,b)=>a.punchIn.localeCompare(b.punchIn))
+// Total raw span covered by all punches, with no lunch exclusion applied —
+// used together with the backend's actualWorkMinutes to derive the TRUE
+// total break/lunch time, whether it came from an explicit gap between
+// punch pairs or the shift's automatic deduction for a single continuous
+// punch. Gap-only totals (totalBreakMinutes above) miss the latter case.
+function totalRawSpanMinutes(punches) {
   let total = 0
-  for (let i=0; i<valid.length-1; i++) {
-    const gap = toMinutes(valid[i+1].punchIn) - toMinutes(valid[i].punchOut)
-    if (gap > 0) total += gap
+  for (const p of (punches||[])) {
+    if (!p.punchIn || !p.punchOut) continue
+    let s = toMinutes(p.punchIn), e = toMinutes(p.punchOut)
+    if (e < s) e += 24*60
+    total += (e - s)
   }
   return total
 }
@@ -144,7 +150,6 @@ export default function Attendance() {
   function setPunch(index,field,value){ setPunches(rows => rows.map((r,i) => i===index ? {...r,[field]:value} : r)) }
   function addPunchRow(){ setPunches(rows => [...rows, {in:'',out:''}]) }
   function removePunchRow(index){ setPunches(rows => rows.length<=1 ? rows : rows.filter((_,i)=>i!==index)) }
-  const breakMinutes = useMemo(()=>totalBreakMinutes(punchesToPayload(punches)),[punches])
 
   async function save(e){
     e.preventDefault(); setError(''); setSuccess('')
@@ -241,7 +246,7 @@ export default function Attendance() {
           const valid=(a.punches||[]).filter(p=>p.punchIn&&p.punchOut)
           const firstIn = valid.length ? valid.slice().sort((x,y)=>x.punchIn.localeCompare(y.punchIn))[0].punchIn.slice(0,5) : '—'
           const lastOut = valid.length ? valid.slice().sort((x,y)=>y.punchOut.localeCompare(x.punchOut))[0].punchOut.slice(0,5) : '—'
-          const brk = totalBreakMinutes(a.punches)
+          const brk = Math.max(0, totalRawSpanMinutes(a.punches) - a.actualWorkMinutes)
           return (
             <tr key={a.attendanceId}>
               <td className="mono">{a.attendanceDate}</td><td>{weekdayOf(a.attendanceDate)}</td>
