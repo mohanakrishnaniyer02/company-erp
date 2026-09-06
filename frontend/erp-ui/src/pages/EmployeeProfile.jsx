@@ -36,6 +36,7 @@ export default function EmployeeProfile({ mode }) {
   const [hasLogin, setHasLogin] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  useEffect(()=>{ if(!success) return; const t=setTimeout(()=>setSuccess(''),4000); return()=>clearTimeout(t) },[success])
 
   useEffect(() => {
     api.get('/lookups/companies').then(r => setLookups(l => ({...l, companies: r.data})))

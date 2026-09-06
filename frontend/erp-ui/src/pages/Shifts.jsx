@@ -16,6 +16,7 @@ export default function Shifts(){
   const [items,setItems]=useState([]), [form,setForm]=useState(empty), [editingId,setEditingId]=useState(null)
   const [showForm,setShowForm]=useState(false)
   const [error,setError]=useState(''), [success,setSuccess]=useState('')
+  useEffect(()=>{ if(!success) return; const t=setTimeout(()=>setSuccess(''),4000); return()=>clearTimeout(t) },[success])
 
   const load=()=>api.get('/shifts').then(r=>setItems(r.data)).catch(()=>setError('Could not load shifts.'))
   useEffect(()=>{load()},[])

@@ -15,6 +15,7 @@ export default function EmployeeList() {
   const [roleFilter, setRoleFilter] = useState('all')
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  useEffect(()=>{ if(!success) return; const t=setTimeout(()=>setSuccess(''),4000); return()=>clearTimeout(t) },[success])
   const navigate = useNavigate()
   const location = useLocation()
 

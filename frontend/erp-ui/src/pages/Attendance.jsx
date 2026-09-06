@@ -49,6 +49,7 @@ export default function Attendance() {
   const [showRoundingModal,setShowRoundingModal] = useState(false)
   const [showEntryModal,setShowEntryModal] = useState(false)
   const [error,setError] = useState(''), [success,setSuccess] = useState('')
+  useEffect(()=>{ if(!success) return; const t=setTimeout(()=>setSuccess(''),4000); return()=>clearTimeout(t) },[success])
 
   // ---- entry modal's own form state ----
   const [editingId,setEditingId] = useState(null)
