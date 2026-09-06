@@ -203,13 +203,15 @@ CREATE TABLE attendance_punches (
 CREATE INDEX idx_attendance_punches_attendance ON attendance_punches(attendance_id);
 
 -- One working bootstrap SuperAdmin account, seeded directly as an employee —
--- no public signup exists anymore. Log in with this once, you'll be forced
--- to set your own password immediately (must_change_password), then use the
--- Employee form to add real Admin/HR people for the organization.
+-- no public signup exists anymore. Log in with this and use the Employee
+-- form to add real Admin/HR people for the organization. This password
+-- stays in effect permanently — there's no forced change on first login;
+-- use the Employee form's password-reset field (or the voluntary Change
+-- Password option once logged in) if you want to set a different one.
 --   Email:    superadmin@company.com
 --   Password: ChangeMe123!
 INSERT INTO employees (emp_code, type, full_name, role_type, email, password_hash, must_change_password, status) VALUES
- ('SUPERADMIN-001', 'Regular', 'System Administrator', 'SuperAdmin', 'superadmin@company.com', '$2b$11$Z9xV0Rh/BjRctSqbT2oEFO1XkR7UbH.2zpk8/TGmom6F/VujYNTX6', TRUE, 'Active');
+ ('SUPERADMIN-001', 'Regular', 'System Administrator', 'SuperAdmin', 'superadmin@company.com', '$2b$11$Z9xV0Rh/BjRctSqbT2oEFO1XkR7UbH.2zpk8/TGmom6F/VujYNTX6', FALSE, 'Active');
 
 INSERT INTO companies (company_name, is_sub_company, parent_company_id) VALUES
  ('Company Tech Pvt Ltd', FALSE, NULL),
@@ -261,9 +263,9 @@ INSERT INTO employees
  email, password_hash, must_change_password, phone_number, location_id, status)
 VALUES
 ('EMP-0002','Regular','Priya Menon','HR Executive',4,1,1,'HR',
- 'priya.menon@company.com','$2b$11$0Lg8eT2GXWMsGDeNez9GzerQ1gE.b8s/VT9ftncRgyBwAg2IjngSK',TRUE,'+91 9800000031',1,'Active'),
+ 'priya.menon@company.com','$2b$11$0Lg8eT2GXWMsGDeNez9GzerQ1gE.b8s/VT9ftncRgyBwAg2IjngSK',FALSE,'+91 9800000031',1,'Active'),
 ('EMP-0003','Regular','Karthik Rajan','Engineering Manager',2,1,1,'Admin',
- 'karthik.rajan@company.com','$2b$11$0Lg8eT2GXWMsGDeNez9GzerQ1gE.b8s/VT9ftncRgyBwAg2IjngSK',TRUE,'+91 9800000032',2,'Active');
+ 'karthik.rajan@company.com','$2b$11$0Lg8eT2GXWMsGDeNez9GzerQ1gE.b8s/VT9ftncRgyBwAg2IjngSK',FALSE,'+91 9800000032',2,'Active');
 
 -- Plain employees — no login, just HR records (Role Type stays the default 'User').
 INSERT INTO employees

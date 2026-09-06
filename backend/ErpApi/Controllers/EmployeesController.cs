@@ -127,7 +127,8 @@ public class EmployeesController : ControllerBase
         if (LoginRoles.Contains(roleType))
         {
             emp.PasswordHash = BCrypt.Net.BCrypt.HashPassword(req.Password!);
-            emp.MustChangePassword = true; // admin-assigned password — they set their own on first login
+            // No forced change on first login — the password set here at creation
+            // time is the one they keep using.
         }
 
         _db.Employees.Add(emp);
@@ -194,17 +195,17 @@ public class EmployeesController : ControllerBase
             {
                 // Elevating a plain "User" employee to a login-capable role for the first time.
                 emp.PasswordHash = BCrypt.Net.BCrypt.HashPassword(req.Password!);
-                emp.MustChangePassword = true; // admin-assigned password — they set their own on first login
                 emp.JwtToken = _jwt.GenerateToken(emp);
             }
             else
             {
                 // Already has a login — only touch the password if one was actually
-                // provided (blank = keep existing password).
+                // provided (blank = keep existing password). No forced change either
+                // way — whatever password is set here (new or reset) is the one they
+                // keep using going forward.
                 if (!string.IsNullOrWhiteSpace(req.Password))
                 {
                     emp.PasswordHash = BCrypt.Net.BCrypt.HashPassword(req.Password);
-                    emp.MustChangePassword = true; // admin reset it — they set their own again on next login
                 }
                 if (roleChanged)
                 {

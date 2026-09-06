@@ -1,17 +1,12 @@
-import { Navigate, Outlet, useLocation } from 'react-router-dom'
+import { Navigate, Outlet } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
 
 export default function ProtectedRoute() {
   const { user } = useAuth()
-  const location = useLocation()
 
   if (!user) return <Navigate to="/login" replace />
 
-  // A temporary/admin-assigned password must be changed before anything else
-  // is reachable — except the change-password screen itself.
-  if (user.mustChangePassword && location.pathname !== '/change-password') {
-    return <Navigate to="/change-password" replace />
-  }
-
+  // No forced password change — whatever password was set at account
+  // creation (or a later reset) is what the person keeps using.
   return <Outlet />
 }

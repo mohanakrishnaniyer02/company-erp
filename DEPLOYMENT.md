@@ -100,8 +100,7 @@ Now that you know the frontend's real URL:
 
 1. Open your frontend URL in a browser (or send it to whoever's demoing).
 2. Log in with the bootstrap account: Employee ID `SUPERADMIN-001` /
-   `ChangeMe123!` — you'll be forced to set a new password immediately,
-   same as locally.
+   `ChangeMe123!` — same as locally.
 3. Click around — Employees, Dashboard, Attendance Explorer.
 
 ## Notes for a business demo specifically
@@ -112,6 +111,7 @@ Now that you know the frontend's real URL:
   little **5 minutes before** your meeting starts, so it's already warm.
 - **This is demo infrastructure, not production**: free-tier databases on
   Render are fine for a demo but not meant for real ongoing use.
-- **Real passwords**: change `ChangeMe123!` immediately (you'll be forced
-  to anyway), and don't put real employee data in a deployment meant to
+- **Real passwords**: change `ChangeMe123!` yourself via the account menu's
+  "Change password" option before a public demo — it isn't forced, so this
+  step is on you — and don't put real employee data in a deployment meant to
   stay a demo.

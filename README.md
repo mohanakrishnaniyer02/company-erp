@@ -90,15 +90,17 @@ without creating anyone yourself:
 | HR | `EMP-0002` | `ChangeMe123!` |
 | Admin | `EMP-0003` | `ChangeMe123!` |
 
-Logging in with any of these forces an immediate password change before
-anything else is reachable — this is deliberate, not a bug. Two more plain
-employees (Ananya Iyer, Zoya Khan) are also seeded with no login, so the
-Employees list isn't empty either.
+Logging in with any of these takes you straight to the Dashboard — this
+password stays in effect permanently, there's no forced change on first
+login. Two more plain employees (Ananya Iyer, Zoya Khan) are also seeded
+with no login, so the Employees list isn't empty either.
 
 **Creating further accounts**: an existing HR/Admin/SuperAdmin opens
 **Add Employee** (or edits an existing one), sets **Role Type** to
 HR/Admin/SuperAdmin, and a **Password** field appears. That password is
-temporary too — the new person is forced to change it on their first login.
+what the new person logs in with going forward — no forced change, though
+they (or an Admin/SuperAdmin resetting it later) can always change it
+voluntarily via the account menu's "Change password" option.
 
 **Role hierarchy** — each role can create/edit accounts at its own level or
 below, never above:
