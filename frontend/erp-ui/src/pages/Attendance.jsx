@@ -93,7 +93,6 @@ export default function Attendance() {
     }
     return s
   },[entries,employeeId])
-
   function resetForm(){
     setEditingId(null); setFormEmployeeId(employeeId||''); setDate(today); setShiftId(''); setEntryType('User')
     const present=statuses.find(x=>x.status==='PRESENT'); setAttendanceStatusId(present?String(present.attendanceStatusId):'')
@@ -218,13 +217,14 @@ export default function Attendance() {
     </div>
 
     {summary && (
-      <div className="kpi-grid">
-        <div className="kpi-card"><div className="lbl">Entered Days</div><div className="num">{summary.entered}</div><small>of {daysInMonth} days in month</small></div>
-        <div className="kpi-card"><div className="lbl">Present</div><div className="num">{summary.present}</div></div>
-        <div className="kpi-card"><div className="lbl">Half Day</div><div className="num">{summary.halfDay}</div></div>
-        <div className="kpi-card"><div className="lbl">Leave</div><div className="num">{summary.leave}</div></div>
-        <div className="kpi-card"><div className="lbl">Holiday</div><div className="num">{summary.holiday}</div></div>
-        <div className="kpi-card"><div className="lbl">Absent</div><div className="num">{summary.absent}</div></div>
+      <div className="kpi-grid" style={{gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))'}}>
+        <div className="kpi-card"><div className="lbl">Total Entered Days</div><div className="num">{summary.entered}</div></div>
+        <div className="kpi-card"><div className="lbl">Total Working Days</div><div className="num">{daysInMonth}</div></div>
+        <div className="kpi-card"><div className="lbl">Total Present Days</div><div className="num">{summary.present}</div></div>
+        <div className="kpi-card"><div className="lbl">Total Half-a-Days</div><div className="num">{summary.halfDay}</div></div>
+        <div className="kpi-card"><div className="lbl">Total Leave Days</div><div className="num">{summary.leave}</div></div>
+        <div className="kpi-card"><div className="lbl">Total Holidays</div><div className="num">{summary.holiday}</div></div>
+        <div className="kpi-card"><div className="lbl">Total Absent Days</div><div className="num">{summary.absent}</div></div>
       </div>
     )}
 
