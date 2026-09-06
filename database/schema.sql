@@ -181,6 +181,7 @@ CREATE TABLE attendance_entries (
     rounded_ot_minutes    INT NOT NULL DEFAULT 0,
     approved_ot_minutes   INT NOT NULL DEFAULT 0,
     reason                TEXT,
+    comments              TEXT,
     created_by_user_id    INT REFERENCES employees(employee_id),
     created_at            TIMESTAMP NOT NULL DEFAULT now(),
     updated_at            TIMESTAMP NOT NULL DEFAULT now(),

@@ -225,6 +225,7 @@ public class AppDbContext : DbContext
             e.Property(x => x.RoundedOtMinutes).HasColumnName("rounded_ot_minutes");
             e.Property(x => x.ApprovedOtMinutes).HasColumnName("approved_ot_minutes");
             e.Property(x => x.Reason).HasColumnName("reason");
+            e.Property(x => x.Comments).HasColumnName("comments");
             e.Property(x => x.CreatedByUserId).HasColumnName("created_by_user_id");
             e.Property(x => x.CreatedAt).HasColumnName("created_at");
             e.Property(x => x.UpdatedAt).HasColumnName("updated_at");

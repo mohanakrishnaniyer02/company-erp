@@ -40,7 +40,9 @@ public class AttendanceController : ControllerBase
                 a.AttendanceDate, a.ShiftId, a.Shift!.ShiftName,
                 a.AttendanceStatus!.Status, a.AttendanceStatus.AttendanceUnits,
                 a.EntryType, a.ActualWorkMinutes, a.RequiredWorkMinutes,
-                a.CalculatedOtMinutes, a.RoundedOtMinutes, a.ApprovedOtMinutes))
+                a.CalculatedOtMinutes, a.RoundedOtMinutes, a.ApprovedOtMinutes,
+                a.Comments,
+                a.Punches.OrderBy(p => p.SequenceNo).Select(p => new PunchPairDto(p.PunchIn, p.PunchOut)).ToList()))
             .ToListAsync();
 
         return Ok(result);
@@ -129,10 +131,22 @@ public class AttendanceController : ControllerBase
         existing.RoundedOtMinutes = result.RoundedOtMinutes;
         existing.ApprovedOtMinutes = approved;
         existing.Reason = req.Reason;
+        existing.Comments = req.Comments;
         existing.UpdatedAt = DateTime.UtcNow;
 
         await _db.SaveChangesAsync();
         return Ok(existing);
+    }
+
+    [HttpDelete("{id:int}")]
+    [Authorize(Roles = "HR,Admin,SuperAdmin")]
+    public async Task<IActionResult> Delete(int id)
+    {
+        var entry = await _db.AttendanceEntries.FindAsync(id);
+        if (entry == null) return NotFound();
+        _db.AttendanceEntries.Remove(entry); // punches cascade-delete via the FK's ON DELETE CASCADE
+        await _db.SaveChangesAsync();
+        return NoContent();
     }
 
     [HttpPost("statuses")]

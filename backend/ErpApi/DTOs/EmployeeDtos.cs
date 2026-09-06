@@ -40,7 +40,7 @@ public record PunchPairDto(TimeOnly? PunchIn, TimeOnly? PunchOut);
 public record AttendanceUpsertRequest(
     int EmployeeId, DateOnly AttendanceDate, int ShiftId, int AttendanceStatusId, string EntryType,
     List<PunchPairDto> Punches,
-    int? ApprovedOtMinutes, string? Reason);
+    int? ApprovedOtMinutes, string? Reason, string? Comments);
 
 public record AttendanceCalculationRequest(
     int EmployeeId, int ShiftId, List<PunchPairDto> Punches);
@@ -53,7 +53,8 @@ public record AttendanceListItem(
     int AttendanceId, int EmployeeId, string EmployeeName, string EmpCode,
     DateOnly AttendanceDate, int ShiftId, string ShiftName, string AttendanceType,
     decimal AttendanceUnits, string EntryType, int ActualWorkMinutes,
-    int RequiredWorkMinutes, int CalculatedOtMinutes, int RoundedOtMinutes, int ApprovedOtMinutes);
+    int RequiredWorkMinutes, int CalculatedOtMinutes, int RoundedOtMinutes, int ApprovedOtMinutes,
+    string? Comments, List<PunchPairDto> Punches);
 
 public record AttendanceStatusRequest(string Status, decimal AttendanceUnits, string Meaning, bool IsActive);
 

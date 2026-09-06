@@ -20,6 +20,7 @@ public class AttendanceEntry
     public int RoundedOtMinutes { get; set; }
     public int ApprovedOtMinutes { get; set; }
     public string? Reason { get; set; }
+    public string? Comments { get; set; } // general note for the day, separate from Reason (which justifies an OT variance)
 
     public int? CreatedByUserId { get; set; } // references employees.employee_id (the person who created this entry)
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
