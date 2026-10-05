@@ -1,11 +1,23 @@
-import { useState } from 'react'
-import { Outlet, NavLink } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Outlet, NavLink, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
+import api from '../api/client'
 
 export default function AppShell() {
   const { user } = useAuth()
   const canManage = ['HR','Admin','SuperAdmin'].includes(user?.role)
+  const canApprove = ['Admin','SuperAdmin'].includes(user?.role)
   const [collapsed, setCollapsed] = useState(true)
+  const [pending, setPending] = useState({ employees: 0, overtime: 0 })
+  const location = useLocation()
+
+  // Pending counts for the badges — refreshed on every page change, and whenever an approval is decided.
+  const refreshPending = () => { if (canApprove) api.get('/approvals/summary').then(r => setPending(r.data)).catch(() => {}) }
+  useEffect(() => { refreshPending() }, [location.pathname, canApprove])
+  useEffect(() => {
+    window.addEventListener('approvals-changed', refreshPending)
+    return () => window.removeEventListener('approvals-changed', refreshPending)
+  }, [canApprove])
 
   return (
     <div id="app-grid">
@@ -35,6 +47,17 @@ export default function AppShell() {
           </NavLink>
           <NavLink to="/leave" className={({isActive}) => 'side-link' + (isActive ? ' active' : '')} title="Leave">
             <span className="ic">◐</span><span className="label">Leave</span>
+          </NavLink>
+        </>}
+        {canApprove && <>
+          <div className="side-group"><span className="label">Approvals</span></div>
+          <NavLink to="/approvals/employees" className={({isActive}) => 'side-link' + (isActive ? ' active' : '')} title="Employee Approvals">
+            <span className="ic">☑</span><span className="label">Employee Approvals</span>
+            {pending.employees > 0 && <span className="side-badge">{pending.employees}</span>}
+          </NavLink>
+          <NavLink to="/approvals/overtime" className={({isActive}) => 'side-link' + (isActive ? ' active' : '')} title="OT Approvals">
+            <span className="ic">◔</span><span className="label">OT Approvals</span>
+            {pending.overtime > 0 && <span className="side-badge">{pending.overtime}</span>}
           </NavLink>
         </>}
       </div>

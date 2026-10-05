@@ -30,8 +30,9 @@ Run `database/schema.sql` once. That's it — it creates every table and seeds:
 No demo companies-only setup here — the database starts with real reference
 data (companies/departments/shifts/locations), a SuperAdmin login, two more
 sample login accounts (HR and Admin), and a couple of plain employee records.
-Add more real people through the app itself once you're in. A couple of demo Shift Mappings
-and some recorded leave are seeded too so the Shift Calendar and Leave screen have something to show.
+Add more real people through the app itself once you're in. A couple of demo Shift Mappings,
+some recorded leave, and a few pending overtime entries are seeded too so the Shift Calendar, Leave and
+Approvals screens have something to show.
 
 **Already have a database with data?** Don't run `schema.sql` — it starts by dropping every
 table. Run the matching script(s) in [`database/upgrades/`](./database/upgrades/) instead
@@ -126,13 +127,14 @@ Token lifetime is set in `appsettings.json` under `Jwt:ExpiryMinutes`
 
 | Module | What it does |
 |---|---|
-| **Employees** | List, search, filter by Regular/Contract and Role Type. Add/Edit covers Basic Details (incl. Role Type, Department, Shift), Bank Details, Proof/Documents, Address, Education |
+| **Employees** | List, search, filter by Regular/Contract and Role Type. Add/Edit covers Basic Details (incl. Role Type, Department, Shift), Bank Details, Proof/Documents, Address, Education. **Adding an employee and deactivating one are requests** that an Admin or SuperAdmin must approve (see Approvals below); editing an existing employee stays immediate |
 | **Departments** | Two tabs. **Payroll Departments**: name, OT allowed, min/max OT time, required work hours per day (drives attendance calculation; feeds the *Payroll Department* dropdown on Employee). **Departments**: a simple name list of the organisational departments (feeds the *Department* dropdown on Employee) |
 | **Shifts** | Master data: timing, lunch, grace in/out, minimum/half-day/full-day minutes, OT-starts-after, night-shift flag. (Whether OT is allowed is set on the Payroll Department, not here.) Feeds the Shift dropdown on Employee |
 | **Shift Mapping** | Put an employee on a different shift for a date range (Start Date, End Date, Employee, Shift) — e.g. a General-shift employee covering a week of nights. Overlapping ranges for one employee are rejected. The Daily Attendance screen picks up the mapped shift for the date, otherwise the employee's own shift |
 | **Shift Calendar** | Teams-style month view: for each day, how many employees are on each shift (colour-coded). Click a day to see who; filter by Department |
-| **Daily Attendance Entry** | HR/Admin/SuperAdmin record each employee's day: shift, attendance type, and an unlimited number of In/Out punch pairs (add as many as actually happened — no fixed cap). Automatically calculates actual work, required work (from Department), calculated OT, and rounded OT (floor to nearest 30 minutes); Approved OT is editable with a required reason if it differs from the rounded value |
+| **Daily Attendance Entry** | HR/Admin/SuperAdmin record each employee's day: shift, attendance type, and an unlimited number of In/Out punch pairs (add as many as actually happened — no fixed cap). Automatically calculates actual work, required work (from the Payroll Department), calculated OT, and rounded OT. Any OT above zero is sent to **OT Approvals** as pending — only approved OT counts toward the *Work Hrs* shown (required time plus approved OT); pending and rejected OT adds nothing |
 | **Leave** | Select an employee and a date to see their balances, then record leave taken with **Add Leave**. Balances come from policy automatically — nobody grants them: **Sick Leave** 6 days per calendar year (whole days), **Casual Leave** 1 day per month (0.5 or 1), **Permission** 120 minutes per month. Each period stands alone — unused leave lapses, nothing carries forward. Over-balance requests are rejected, and at most one day of leave can be recorded per date. Admin/SuperAdmin also get **Adjust balance** (reason required) for exceptions, and can remove adjustments; HR can remove leave they recorded by mistake |
+| **Approvals** *(Admin and SuperAdmin only — hidden from everyone else)* | A sidebar group with two screens, each with a pending-count badge. **Employee Approvals**: requests to add or deactivate an employee, showing the essential details with ✓ Approve / ✕ Reject. An added employee only exists once approved (a login password is stored only as a hash while waiting); a deactivation leaves the employee Active until approved. An approver can't approve a request above their own role (an Admin can't approve adding or deactivating a SuperAdmin) but may approve a request they raised themselves. **OT Approvals**: overtime waiting for a decision — the approver can change the minutes (up to the OT actually worked; a note is required if it differs from the rounded figure) before approving, or reject it. If attendance is saved again with different OT it goes back to pending |
 | **Dashboard** | Headcount KPIs (total/active/contract, today's present count and approved OT), plus an **Attendance Explorer** — pick a month and browse either a company-wide summary or one employee's full day-by-day record |
 
 All time values are stored in minutes internally and displayed in hours for

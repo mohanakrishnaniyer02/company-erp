@@ -13,6 +13,7 @@ public class AppDbContext : DbContext
     public DbSet<OrgDepartment> OrgDepartments => Set<OrgDepartment>();
     public DbSet<ShiftMapping> ShiftMappings => Set<ShiftMapping>();
     public DbSet<LeaveType> LeaveTypes => Set<LeaveType>();
+    public DbSet<ApprovalRequest> ApprovalRequests => Set<ApprovalRequest>();
     public DbSet<LeaveEntry> LeaveEntries => Set<LeaveEntry>();
     public DbSet<Employee> Employees => Set<Employee>();
     public DbSet<BankDetail> BankDetails => Set<BankDetail>();
@@ -53,6 +54,24 @@ public class AppDbContext : DbContext
             e.Property(x => x.OrgDepartmentId).HasColumnName("org_department_id");
             e.Property(x => x.DepartmentName).HasColumnName("department_name");
             e.HasIndex(x => x.DepartmentName).IsUnique();
+        });
+
+        modelBuilder.Entity<ApprovalRequest>(e =>
+        {
+            e.ToTable("approval_requests");
+            e.HasKey(x => x.ApprovalRequestId);
+            e.Property(x => x.ApprovalRequestId).HasColumnName("approval_request_id");
+            e.Property(x => x.RequestType).HasColumnName("request_type");
+            e.Property(x => x.Status).HasColumnName("status");
+            e.Property(x => x.TargetEmployeeId).HasColumnName("target_employee_id");
+            e.Property(x => x.SummaryCode).HasColumnName("summary_code");
+            e.Property(x => x.SummaryName).HasColumnName("summary_name");
+            e.Property(x => x.Payload).HasColumnName("payload");
+            e.Property(x => x.RequestedByEmployeeId).HasColumnName("requested_by_employee_id");
+            e.Property(x => x.RequestedAt).HasColumnName("requested_at");
+            e.Property(x => x.DecidedByEmployeeId).HasColumnName("decided_by_employee_id");
+            e.Property(x => x.DecidedAt).HasColumnName("decided_at");
+            e.Property(x => x.DecisionNote).HasColumnName("decision_note");
         });
 
         modelBuilder.Entity<LeaveType>(e =>
@@ -283,6 +302,10 @@ public class AppDbContext : DbContext
             e.Property(x => x.ApprovedOtMinutes).HasColumnName("approved_ot_minutes");
             e.Property(x => x.Reason).HasColumnName("reason");
             e.Property(x => x.Comments).HasColumnName("comments");
+            e.Property(x => x.OtStatus).HasColumnName("ot_status");
+            e.Property(x => x.CountedWorkMinutes).HasColumnName("counted_work_minutes");
+            e.Property(x => x.OtDecidedByEmployeeId).HasColumnName("ot_decided_by_employee_id");
+            e.Property(x => x.OtDecidedAt).HasColumnName("ot_decided_at");
             e.Property(x => x.CreatedByUserId).HasColumnName("created_by_user_id");
             e.Property(x => x.CreatedAt).HasColumnName("created_at");
             e.Property(x => x.UpdatedAt).HasColumnName("updated_at");

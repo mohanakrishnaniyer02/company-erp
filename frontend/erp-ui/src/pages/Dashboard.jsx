@@ -22,7 +22,7 @@ function aggregateByEmployee(entries){
     if(e.attendanceType==='PRESENT') m.present++
     else if(e.attendanceType==='ABSENT') m.absent++
     else m.other++
-    m.totalWork+=e.actualWorkMinutes
+    m.totalWork+=e.countedWorkMinutes
     m.totalOt+=e.approvedOtMinutes
   })
   return Object.values(map).sort((x,y)=>x.employeeName.localeCompare(y.employeeName))
@@ -57,7 +57,7 @@ export default function Dashboard() {
   const selectedTotals=employeeId ? {
     present: attEntries.filter(e=>e.attendanceType==='PRESENT').length,
     absent: attEntries.filter(e=>e.attendanceType==='ABSENT').length,
-    totalWork: attEntries.reduce((s,e)=>s+e.actualWorkMinutes,0),
+    totalWork: attEntries.reduce((s,e)=>s+e.countedWorkMinutes,0),
     totalOt: attEntries.reduce((s,e)=>s+e.approvedOtMinutes,0),
   } : null
 
@@ -106,7 +106,7 @@ export default function Dashboard() {
           <table className="emp-table">
             {employeeId ? (
               <>
-                <thead><tr><th>Date</th><th>Status</th><th>Shift</th><th>Actual Work</th><th>Approved OT</th></tr></thead>
+                <thead><tr><th>Date</th><th>Status</th><th>Shift</th><th title="Required time plus approved overtime">Work (counted)</th><th>Approved OT</th></tr></thead>
                 <tbody>
                   {attEntries.length===0
                     ? <tr className="empty-row"><td colSpan="5">No attendance recorded for this employee this month.</td></tr>
@@ -115,7 +115,7 @@ export default function Dashboard() {
                         <td>{e.attendanceDate}</td>
                         <td>{e.attendanceType}</td>
                         <td>{e.shiftName}</td>
-                        <td>{fmt(e.actualWorkMinutes)}</td>
+                        <td>{fmt(e.countedWorkMinutes)}</td>
                         <td><b>{fmt(e.approvedOtMinutes)}</b></td>
                       </tr>
                     ))}

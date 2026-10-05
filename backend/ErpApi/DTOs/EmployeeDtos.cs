@@ -3,13 +3,14 @@ namespace ErpApi.DTOs;
 public record EmployeeListItem(
     int EmployeeId, string EmpCode, string FullName, string? Designation,
     string? Department, string Type, string Status, string? Location, string RoleType, int? ShiftId, string? ShiftName,
-    bool HasLogin, string? OrgDepartment = null);
+    bool HasLogin, string? OrgDepartment = null, bool PendingDeactivation = false);
 
 public record EmployeeUpsertRequest(
     string EmpCode, string Type, string FullName, string? Designation,
     int? DepartmentId, int? OrgDepartmentId, int? CompanyId, int? ManagerId, int? ShiftId, string? RoleType, string? Password,
     DateOnly? DateOfJoining, DateOnly? DateOfBirth, DateOnly? DateOfLeaving, string? LeavingComments,
-    int? LocationId, string? Email, string? PhoneNumber, string? PhotoUrl, string? MaritalStatus);
+    int? LocationId, string? Email, string? PhoneNumber, string? PhotoUrl, string? MaritalStatus,
+    BankDetailRequest? Bank = null);
 
 public record BankDetailRequest(
     string? BankName, string? AccountNumber, string? IfscCode,
@@ -50,20 +51,21 @@ public record PunchPairDto(TimeOnly? PunchIn, TimeOnly? PunchOut);
 public record AttendanceUpsertRequest(
     int EmployeeId, DateOnly AttendanceDate, int ShiftId, int AttendanceStatusId, string EntryType,
     List<PunchPairDto> Punches,
-    int? ApprovedOtMinutes, string? Reason, string? Comments);
+    string? Comments);
 
 public record AttendanceCalculationRequest(
     int EmployeeId, int ShiftId, List<PunchPairDto> Punches);
 
 public record AttendanceCalculationResult(
     int ActualWorkMinutes, int RequiredWorkMinutes, int CalculatedOtMinutes,
-    int RoundedOtMinutes, int ApprovedOtMinutes);
+    int RoundedOtMinutes);
 
 public record AttendanceListItem(
     int AttendanceId, int EmployeeId, string EmployeeName, string EmpCode,
     DateOnly AttendanceDate, int ShiftId, string ShiftName, string AttendanceType,
     decimal AttendanceUnits, string EntryType, int ActualWorkMinutes,
     int RequiredWorkMinutes, int CalculatedOtMinutes, int RoundedOtMinutes, int ApprovedOtMinutes,
+    string OtStatus, int CountedWorkMinutes,
     string? Comments, List<PunchPairDto> Punches);
 
 public record AttendanceStatusRequest(string Status, decimal AttendanceUnits, string Meaning, bool IsActive);
@@ -96,3 +98,25 @@ public record LeaveBalanceItem(
 public record LeaveEntryItem(
     int LeaveEntryId, int LeaveTypeId, string LeaveTypeName, string Unit, string Kind,
     DateOnly LeaveDate, decimal Amount, string? Reason, string? RecordedBy, DateTime CreatedAt);
+
+// ---- Approvals ----
+public record PendingEmployeePayload(EmployeeUpsertRequest Employee, string? PasswordHash);
+
+public record ApprovalSummary(int Employees, int Overtime);
+
+public record DecisionRequest(string? Note);
+
+public record OtDecisionRequest(int? ApprovedMinutes, string? Note);
+
+public record EmployeeApprovalItem(
+    int ApprovalRequestId, string RequestType, string Status,
+    string EmpCode, string FullName, string? Designation, string? Type, string? RoleType,
+    string? PayrollDepartment, string? Department, string? Company, string? Shift, string? Location,
+    DateOnly? DateOfJoining, string? Email, string? PhoneNumber, bool HasLogin,
+    string? RequestedBy, DateTime RequestedAt, string? DecidedBy, DateTime? DecidedAt, string? DecisionNote);
+
+public record OvertimeApprovalItem(
+    int AttendanceId, DateOnly AttendanceDate, int EmployeeId, string EmployeeName, string EmpCode, string ShiftName,
+    TimeOnly? FirstIn, TimeOnly? LastOut,
+    int ActualWorkMinutes, int RequiredWorkMinutes, int CalculatedOtMinutes, int RoundedOtMinutes, int ApprovedOtMinutes,
+    string OtStatus, string? DecidedBy, DateTime? DecidedAt, string? Note);

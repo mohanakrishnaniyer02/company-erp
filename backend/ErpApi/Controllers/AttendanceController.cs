@@ -2,6 +2,7 @@ using System.Security.Claims;
 using ErpApi.Data;
 using ErpApi.DTOs;
 using ErpApi.Models;
+using ErpApi.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -41,6 +42,7 @@ public class AttendanceController : ControllerBase
                 a.AttendanceStatus!.Status, a.AttendanceStatus.AttendanceUnits,
                 a.EntryType, a.ActualWorkMinutes, a.RequiredWorkMinutes,
                 a.CalculatedOtMinutes, a.RoundedOtMinutes, a.ApprovedOtMinutes,
+                a.OtStatus, a.CountedWorkMinutes,
                 a.Comments,
                 a.Punches.OrderBy(p => p.SequenceNo).Select(p => new PunchPairDto(p.PunchIn, p.PunchOut)).ToList()))
             .ToListAsync();
@@ -95,10 +97,13 @@ public class AttendanceController : ControllerBase
         if (calculation.Error != null) return BadRequest(new { message = calculation.Error });
 
         var result = calculation.Result!;
-        var approved = req.ApprovedOtMinutes ?? result.RoundedOtMinutes;
-        if (approved < 0) return BadRequest(new { message = "Approved OT cannot be negative." });
-        if (approved != result.RoundedOtMinutes && string.IsNullOrWhiteSpace(req.Reason))
-            return BadRequest(new { message = "Reason is required when approved OT differs from rounded OT." });
+
+        // OT no longer gets approved here: any OT above zero goes to the Approvals screen
+        // as PENDING and counts for nothing until an Admin/SuperAdmin decides. An earlier
+        // decision survives a re-save only if the OT itself didn't change.
+        var (otStatus, approvedOt) = OvertimeRules.StatusOnSave(
+            existing?.OtStatus, existing?.RoundedOtMinutes ?? 0, existing?.ApprovedOtMinutes ?? 0, result.RoundedOtMinutes);
+        var decisionStands = existing != null && otStatus == existing.OtStatus && otStatus is "APPROVED" or "REJECTED";
 
         if (existing == null)
         {
@@ -129,8 +134,16 @@ public class AttendanceController : ControllerBase
         existing.RequiredWorkMinutes = result.RequiredWorkMinutes;
         existing.CalculatedOtMinutes = result.CalculatedOtMinutes;
         existing.RoundedOtMinutes = result.RoundedOtMinutes;
-        existing.ApprovedOtMinutes = approved;
-        existing.Reason = req.Reason;
+        existing.ApprovedOtMinutes = approvedOt;
+        existing.OtStatus = otStatus;
+        existing.CountedWorkMinutes = OvertimeRules.CountedWorkMinutes(result.ActualWorkMinutes, result.RequiredWorkMinutes, otStatus, approvedOt);
+        if (!decisionStands)
+        {
+            // New or changed OT starts undecided; no stale approver/note left behind.
+            existing.Reason = null;
+            existing.OtDecidedByEmployeeId = null;
+            existing.OtDecidedAt = null;
+        }
         existing.Comments = req.Comments;
         existing.UpdatedAt = DateTime.UtcNow;
 
@@ -243,7 +256,7 @@ public class AttendanceController : ControllerBase
             rounded = rule?.RoundedMinutes ?? (ot / 30) * 30;
         }
 
-        return (new AttendanceCalculationResult(actual, required, ot, rounded, rounded), null);
+        return (new AttendanceCalculationResult(actual, required, ot, rounded), null);
     }
 
     private static int DurationMinutesExcludingLunch(

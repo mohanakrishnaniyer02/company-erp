@@ -39,13 +39,14 @@ export default function EmployeeList() {
   useEffect(() => { load() }, [load])
 
   async function handleDelete(emp) {
-    if (!window.confirm(`Deactivate ${emp.fullName} (${emp.empCode})? Their record is retained but marked Inactive.`)) return
+    if (!window.confirm(`Request deactivation of ${emp.fullName} (${emp.empCode})? An Admin or SuperAdmin has to approve it; until then they stay Active. Their record is kept either way.`)) return
+    setError(''); setSuccess('')
     try {
-      await api.delete(`/employees/${emp.employeeId}`)
-      setSuccess(`${emp.fullName} deactivated.`)
+      const res = await api.delete(`/employees/${emp.employeeId}`)
+      setSuccess(res.data?.message || `Deactivation of ${emp.fullName} sent for approval.`)
       load()
-    } catch {
-      setError('Could not delete this employee.')
+    } catch (err) {
+      setError(err.response?.data?.message || 'Could not request this deactivation.')
     }
   }
 
@@ -121,7 +122,9 @@ export default function EmployeeList() {
                         <button type="button" className="edit" title="Edit" onClick={() => navigate(`/employees/${e.employeeId}`)}>✎</button>
                         {e.status === 'Inactive'
                           ? <button type="button" className="edit" title="Reactivate" onClick={() => handleReactivate(e)}>↺</button>
-                          : <button type="button" className="del" title="Delete" onClick={() => handleDelete(e)}>🗑</button>}
+                          : e.pendingDeactivation
+                            ? <span className="pill pending" title="Waiting for an Admin or SuperAdmin to approve">Deactivation pending</span>
+                            : <button type="button" className="del" title="Request deactivation" onClick={() => handleDelete(e)}>🗑</button>}
                       </div>
                     )}
                   </td>

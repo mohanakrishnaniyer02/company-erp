@@ -96,18 +96,20 @@ export default function EmployeeProfile({ mode }) {
       dateOfLeaving: form.dateOfLeaving || null,
     }
     try {
-      let employeeId = id
+      const hasBank = !!(bank.bankName || bank.accountNumber || bank.ifscCode)
       if (mode === 'add') {
-        const res = await api.post('/employees', payload)
-        employeeId = res.data.employeeId
-      } else {
-        await api.put(`/employees/${id}`, payload)
+        // Adding is a request for an Admin/SuperAdmin to approve — the employee doesn't exist yet,
+        // so the bank details travel with the request and are saved when it's approved.
+        const res = await api.post('/employees', { ...payload, bank: hasBank ? bank : null })
+        navigate('/employees', { state: { message: res.data.message || `${form.fullName} has been sent for approval.` } })
+        return
       }
+      await api.put(`/employees/${id}`, payload)
       // save sub-tabs (only if something was entered)
-      if (bank.bankName || bank.accountNumber || bank.ifscCode) {
-        await api.put(`/employees/${employeeId}/bank-details`, bank)
+      if (hasBank) {
+        await api.put(`/employees/${id}/bank-details`, bank)
       }
-      navigate('/employees', { state: { message: `${form.fullName} ${mode === 'add' ? 'added' : 'updated'}.` } })
+      navigate('/employees', { state: { message: `${form.fullName} updated.` } })
     } catch (err) {
       setError(err.response?.data?.message || 'Could not save employee.')
     }
@@ -402,9 +404,10 @@ export default function EmployeeProfile({ mode }) {
             </div>
           )}
 
+          {mode === 'add' && <p className="field-help" style={{padding:'0 30px 8px', margin:0}}>New employees are added only after an Admin or SuperAdmin approves the request. Proof, address and education can be added once they appear in the list.</p>}
           <div className="footer-actions">
             <button type="button" className="btn-ghost" onClick={() => navigate('/employees')}>Cancel</button>
-            <button type="button" className="btn-primary" style={{width:'auto', margin:0, padding:'10px 22px'}} onClick={handleSave}>Save Changes</button>
+            <button type="button" className="btn-primary" style={{width:'auto', margin:0, padding:'10px 22px'}} onClick={handleSave}>{mode === 'add' ? 'Submit for Approval' : 'Save Changes'}</button>
           </div>
         </div>
       </div>

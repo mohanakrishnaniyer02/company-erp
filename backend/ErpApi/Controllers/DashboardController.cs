@@ -71,7 +71,7 @@ public class DashboardController : ControllerBase
             attendance.Count(a => a.AttendanceStatus!.Status == "ON_DUTY"),
             attendance.Count(a => !new[] { "PRESENT", "ABSENT", "HALF_DAY", "PAID_LEAVE", "ON_DUTY" }.Contains(a.AttendanceStatus!.Status)),
             attendance.Count,
-            attendance.Sum(a => a.ActualWorkMinutes),
+            attendance.Sum(a => a.CountedWorkMinutes),
             attendance.Sum(a => a.ApprovedOtMinutes));
 
         return Ok(new DashboardStats(total, active, contract, byDept, byRole, byShift, unassignedShiftCount, recent, todaySummary));

@@ -19,8 +19,12 @@ public class AttendanceEntry
     public int CalculatedOtMinutes { get; set; }
     public int RoundedOtMinutes { get; set; }
     public int ApprovedOtMinutes { get; set; }
-    public string? Reason { get; set; }
-    public string? Comments { get; set; } // general note for the day, separate from Reason (which justifies an OT variance)
+    public string? Reason { get; set; }          // the approver's note on the OT decision
+    public string OtStatus { get; set; } = "NONE"; // NONE | PENDING | APPROVED | REJECTED
+    public int CountedWorkMinutes { get; set; }    // min(actual, required) + approved OT — what counts toward pay
+    public int? OtDecidedByEmployeeId { get; set; }
+    public DateTime? OtDecidedAt { get; set; }
+    public string? Comments { get; set; } // general note for the day, separate from Reason (the OT approver's note)
 
     public int? CreatedByUserId { get; set; } // references employees.employee_id (the person who created this entry)
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

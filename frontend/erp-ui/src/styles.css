@@ -239,3 +239,22 @@ a{cursor:pointer;}
 .cal-cell.today .cal-date{background:var(--blue-600); color:#fff; border-radius:50%;}
 .cal-chip{font-size:11px; font-weight:600; padding:2px 7px; border-radius:6px; display:flex; justify-content:space-between; align-items:center; gap:6px;}
 @media (max-width:760px){ .cal-cell{min-height:72px; padding:5px;} .cal-chip{font-size:10px; padding:1px 4px;} }
+
+/* ---- Sidebar: Approvals group + pending badges ---- */
+.side-link{position:relative;}
+.side-group{margin:14px 0 4px; padding:10px 10px 0; border-top:1px solid rgba(255,255,255,.12); font-size:10px; font-weight:700; letter-spacing:.09em; text-transform:uppercase; color:#7C8BC2;}
+.sidebar.collapsed .side-group{padding:0; margin:10px 6px 6px;}
+.sidebar.collapsed .side-group .label{display:none;}
+.side-badge{margin-left:auto; background:#F59E0B; color:#fff; font-size:10.5px; font-weight:800; border-radius:10px; padding:1px 7px; line-height:1.5;}
+.sidebar.collapsed .side-badge{position:absolute; top:4px; right:4px; margin:0; padding:0 5px; font-size:9.5px;}
+/* ---- Approval screens ---- */
+.pill{display:inline-block; font-size:11px; font-weight:700; padding:3px 9px; border-radius:20px; letter-spacing:.02em;}
+.pill.pending{background:var(--amber-bg); color:var(--amber);}
+.pill.approved{background:var(--success-bg); color:var(--success);}
+.pill.rejected{background:var(--danger-bg); color:var(--danger);}
+.pill.add{background:var(--blue-100); color:var(--blue-700);}
+.pill.delete{background:var(--danger-bg); color:var(--danger);}
+.icon-act{width:34px; height:34px; border-radius:8px; border:1px solid var(--line); background:var(--surface); font-size:16px; font-weight:800; cursor:pointer; line-height:1;}
+.icon-act.ok{color:var(--success);} .icon-act.ok:hover{background:var(--success-bg); border-color:var(--success);}
+.icon-act.no{color:var(--danger);} .icon-act.no:hover{background:var(--danger-bg); border-color:var(--danger);}
+.icon-act:disabled{opacity:.45; cursor:not-allowed;}

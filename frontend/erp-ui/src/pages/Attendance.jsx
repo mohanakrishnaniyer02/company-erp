@@ -62,8 +62,9 @@ export default function Attendance() {
   const [formEmployeeId,setFormEmployeeId] = useState(''), [formDepartmentFilter,setFormDepartmentFilter] = useState(''), [date,setDate] = useState(today)
   const [shiftSource,setShiftSource] = useState(''), [shiftId,setShiftId] = useState(''), [attendanceStatusId,setAttendanceStatusId] = useState('')
   const [entryType,setEntryType] = useState('User'), [punches,setPunches] = useState(emptyPunches)
-  const [calc,setCalc] = useState({actualWorkMinutes:0,requiredWorkMinutes:0,calculatedOtMinutes:0,roundedOtMinutes:0,approvedOtMinutes:0})
-  const [approvedOt,setApprovedOt] = useState(''), [reason,setReason] = useState(''), [comments,setComments] = useState('')
+  const [calc,setCalc] = useState({actualWorkMinutes:0,requiredWorkMinutes:0,calculatedOtMinutes:0,roundedOtMinutes:0})
+  const [otInfo,setOtInfo] = useState(null)   // when editing: that entry's current OT decision
+  const [comments,setComments] = useState('')
 
   useEffect(() => {
     Promise.all([
@@ -103,8 +104,8 @@ export default function Attendance() {
   function resetForm(){
     setEditingId(null); setFormEmployeeId(employeeId||''); setFormDepartmentFilter(departmentFilter||''); setDate(today); setShiftId(''); setShiftSource(''); setEntryType('User')
     const present=statuses.find(x=>x.status==='PRESENT'); setAttendanceStatusId(present?String(present.attendanceStatusId):'')
-    setPunches(emptyPunches); setApprovedOt(''); setReason(''); setComments('')
-    setCalc({actualWorkMinutes:0,requiredWorkMinutes:0,calculatedOtMinutes:0,roundedOtMinutes:0,approvedOtMinutes:0})
+    setPunches(emptyPunches); setComments(''); setOtInfo(null)
+    setCalc({actualWorkMinutes:0,requiredWorkMinutes:0,calculatedOtMinutes:0,roundedOtMinutes:0})
   }
   function openAdd(){
     resetForm()
@@ -119,8 +120,9 @@ export default function Attendance() {
     setEntryType(a.entryType)
     const loaded = (a.punches||[]).map(p=>({in:(p.punchIn||'').slice(0,5), out:(p.punchOut||'').slice(0,5)}))
     setPunches(loaded.length ? loaded : emptyPunches)
-    setApprovedOt(String(a.approvedOtMinutes ?? 0)); setReason(''); setComments(a.comments||'')
-    setCalc({actualWorkMinutes:a.actualWorkMinutes,requiredWorkMinutes:a.requiredWorkMinutes,calculatedOtMinutes:a.calculatedOtMinutes,roundedOtMinutes:a.roundedOtMinutes,approvedOtMinutes:a.approvedOtMinutes})
+    setComments(a.comments||'')
+    setOtInfo({status:a.otStatus, rounded:a.roundedOtMinutes, approved:a.approvedOtMinutes})
+    setCalc({actualWorkMinutes:a.actualWorkMinutes,requiredWorkMinutes:a.requiredWorkMinutes,calculatedOtMinutes:a.calculatedOtMinutes,roundedOtMinutes:a.roundedOtMinutes})
     setError(''); setSuccess(''); setShowEntryModal(true)
   }
   function closeModal(){ setShowEntryModal(false) }
@@ -147,7 +149,6 @@ export default function Attendance() {
         const payload={employeeId:Number(formEmployeeId),shiftId:Number(shiftId),punches:punchesToPayload(punches)}
         const r=await api.post('/attendance/calculate',payload)
         setCalc(r.data)
-        setApprovedOt(prev => (prev==='' ? String(r.data.roundedOtMinutes) : prev))
       }catch{}
     },300)
     return()=>clearTimeout(timer)
@@ -164,7 +165,7 @@ export default function Attendance() {
       await api.post('/attendance',{
         employeeId:Number(formEmployeeId),attendanceDate:date,shiftId:Number(shiftId),attendanceStatusId:Number(attendanceStatusId),
         entryType,punches:punchesToPayload(punches),
-        approvedOtMinutes:approvedOt===''?null:Number(approvedOt),reason:reason||null,comments:comments||null
+        comments:comments||null
       })
       setSuccess(`Attendance saved for ${formSelectedEmployee?.fullName}.`)
       setShowEntryModal(false)
@@ -246,7 +247,7 @@ export default function Attendance() {
       <div className="table-scroll"><table className="emp-table">
         <thead><tr>
           <th>Date</th><th>Day</th>{!employeeId && <th>Employee</th>}<th>Status</th>
-          <th>In</th><th>Out</th><th>Break</th><th>Work Hrs</th><th>OT</th><th>Comments</th><th></th>
+          <th>In</th><th>Out</th><th>Break</th><th title="Required time plus any approved overtime — what counts toward pay">Work Hrs</th><th>OT</th><th>Comments</th><th></th>
         </tr></thead>
         <tbody>{entries.slice().sort((a,b)=>a.attendanceDate.localeCompare(b.attendanceDate)).map(a=>{
           const valid=(a.punches||[]).filter(p=>p.punchIn&&p.punchOut)
@@ -259,7 +260,13 @@ export default function Attendance() {
               {!employeeId && <td><b>{a.employeeName}</b><div className="meta">{a.empCode}</div></td>}
               <td><span className={'badge '+(a.attendanceType==='PRESENT'||a.attendanceType==='ON_DUTY'?'active':'inactive')}>{a.attendanceType}</span></td>
               <td>{firstIn}</td><td>{lastOut}</td><td>{brk>0?formatMinutes(brk):'—'}</td>
-              <td>{formatMinutes(a.actualWorkMinutes)}</td><td><b>{formatMinutes(a.approvedOtMinutes)}</b></td>
+              <td>{formatMinutes(a.countedWorkMinutes)}{a.countedWorkMinutes!==a.actualWorkMinutes && <div className="meta" title="Total time punched, before OT approval">punched {formatMinutes(a.actualWorkMinutes)}</div>}</td>
+              <td>
+                {a.otStatus==='APPROVED' && <><b>{formatMinutes(a.approvedOtMinutes)}</b> <span className="pill approved">Approved</span></>}
+                {a.otStatus==='PENDING' && <><span className="pill pending">Pending</span><div className="meta">{formatMinutes(a.roundedOtMinutes)} awaiting approval</div></>}
+                {a.otStatus==='REJECTED' && <><span className="pill rejected">Rejected</span><div className="meta">{formatMinutes(a.roundedOtMinutes)} not counted</div></>}
+                {(!a.otStatus || a.otStatus==='NONE') && '—'}
+              </td>
               <td className="meta" style={{maxWidth:160, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}} title={a.comments||''}>{a.comments||'—'}</td>
               <td><div className="row-actions">
                 <button type="button" className="edit" title="Edit" onClick={()=>openEdit(a)}>✎</button>
@@ -338,8 +345,16 @@ export default function Attendance() {
               <div className="calc-box"><span>Required Work</span><strong>{formatMinutes(calc.requiredWorkMinutes)}</strong><small>{calc.requiredWorkMinutes} minutes</small></div>
               <div className="calc-box"><span>Calculated OT</span><strong>{formatMinutes(calc.calculatedOtMinutes)}</strong><small>{calc.calculatedOtMinutes} minutes</small></div>
               <div className="calc-box"><span>Rounded OT</span><strong>{formatMinutes(calc.roundedOtMinutes)}</strong><small>{calc.roundedOtMinutes} minutes</small></div>
-              <div className="field"><label>Approved OT (editable)</label><input type="number" min="0" value={approvedOt} onChange={e=>setApprovedOt(e.target.value)}/><small className="field-help">Stored in minutes · {formatMinutes(approvedOt)}</small></div>
-              <div className="field" style={{gridColumn:'span 2'}}><label>Reason</label><input value={reason} onChange={e=>setReason(e.target.value)} placeholder="Required when approved OT differs from rounded OT"/></div>
+              <div className="calc-box"><span>Counted Work</span><strong>{formatMinutes(Math.min(calc.actualWorkMinutes, calc.requiredWorkMinutes))}</strong><small>approved OT is added once decided</small></div>
+              <div className="field" style={{gridColumn:'1 / -1'}}>
+                <label>Overtime approval</label>
+                <div className="meta" style={{fontSize:12.5, lineHeight:1.5}}>
+                  {calc.roundedOtMinutes <= 0 && 'No overtime on this entry.'}
+                  {calc.roundedOtMinutes > 0 && otInfo && otInfo.rounded === calc.roundedOtMinutes && otInfo.status === 'APPROVED' && `Approved: ${formatMinutes(otInfo.approved)}. This stays as decided unless the overtime changes.`}
+                  {calc.roundedOtMinutes > 0 && otInfo && otInfo.rounded === calc.roundedOtMinutes && otInfo.status === 'REJECTED' && 'Rejected — the overtime is not counted. This stays as decided unless the overtime changes.'}
+                  {calc.roundedOtMinutes > 0 && !(otInfo && otInfo.rounded === calc.roundedOtMinutes && (otInfo.status === 'APPROVED' || otInfo.status === 'REJECTED')) && `${formatMinutes(calc.roundedOtMinutes)} of overtime will be sent to an Admin or SuperAdmin for approval. It only counts toward work hours once approved.`}
+                </div>
+              </div>
             </div>
 
             <div style={{display:'flex', justifyContent:'flex-end', gap:10, marginTop:20, paddingTop:16, borderTop:'1px solid var(--line)'}}>

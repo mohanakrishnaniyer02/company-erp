@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Text.Json;
 using ErpApi.Data;
 using ErpApi.DTOs;
 using ErpApi.Models;
@@ -16,15 +17,8 @@ public class EmployeesController : ControllerBase
 {
     private readonly AppDbContext _db;
     private readonly IJwtService _jwt;
-    private static readonly string[] LoginRoles = { "HR", "Admin", "SuperAdmin" };
-
-    // SuperAdmin can manage anyone. Admin can manage Admin/HR/User (not SuperAdmin).
-    // HR can manage HR/User (not Admin/SuperAdmin). Applies to both who they can
-    // create/edit AND which role they're allowed to assign.
-    private static readonly Dictionary<string, int> RoleRank = new()
-    {
-        { "User", 0 }, { "HR", 1 }, { "Admin", 2 }, { "SuperAdmin", 3 }
-    };
+    private static readonly string[] LoginRoles = EmployeeRules.LoginRoles;
+    private static readonly Dictionary<string, int> RoleRank = EmployeeRules.RoleRank;
 
     public EmployeesController(AppDbContext db, IJwtService jwt)
     {
@@ -57,7 +51,8 @@ public class EmployeesController : ControllerBase
                 e.Type, e.Status, e.LocationRef != null ? e.LocationRef.LocationName : null,
                 e.RoleType, e.ShiftId, e.Shift != null ? e.Shift.ShiftName : null,
                 e.PasswordHash != null,
-                e.OrgDepartment != null ? e.OrgDepartment.DepartmentName : null))
+                e.OrgDepartment != null ? e.OrgDepartment.DepartmentName : null,
+                _db.ApprovalRequests.Any(r => r.Status == "PENDING" && r.RequestType == "EMPLOYEE_DELETE" && r.TargetEmployeeId == e.EmployeeId)))
             .ToListAsync();
 
         return Ok(result);
@@ -81,9 +76,12 @@ public class EmployeesController : ControllerBase
     }
 
     // POST /api/employees
+    // Adding an employee is a request: nothing is created until an Admin or
+    // SuperAdmin approves it on the Approvals screen. The request is checked now
+    // (so the requester sees mistakes immediately) and again on approval.
     [HttpPost]
     [Authorize(Roles = "HR,Admin,SuperAdmin")]
-    public async Task<ActionResult<Employee>> Create(EmployeeUpsertRequest req)
+    public async Task<IActionResult> Create(EmployeeUpsertRequest req)
     {
         if (string.IsNullOrWhiteSpace(req.FullName))
             return BadRequest(new { message = "Full name is required." });
@@ -91,6 +89,8 @@ public class EmployeesController : ControllerBase
             return BadRequest(new { message = "Employee ID is required." });
         if (await _db.Employees.AnyAsync(e => e.EmpCode == req.EmpCode))
             return Conflict(new { message = $"Employee ID '{req.EmpCode}' is already in use — pick a different one." });
+        if (await _db.ApprovalRequests.AnyAsync(r => r.Status == "PENDING" && r.RequestType == "EMPLOYEE_ADD" && r.SummaryCode == req.EmpCode))
+            return Conflict(new { message = $"A request to add Employee ID '{req.EmpCode}' is already waiting for approval." });
 
         var roleType = string.IsNullOrWhiteSpace(req.RoleType) ? "User" : req.RoleType!;
         if (RoleRank.TryGetValue(roleType, out var newRoleRank) && newRoleRank > CallerRoleRank())
@@ -102,47 +102,23 @@ public class EmployeesController : ControllerBase
         if (LoginRoles.Contains(roleType) && await _db.Employees.AnyAsync(e => e.Email == req.Email && e.PasswordHash != null))
             return Conflict(new { message = "An account with this email already exists." });
 
-        var emp = new Employee
+        // The plain password must never be stored — keep only its hash in the request.
+        var hash = LoginRoles.Contains(roleType) ? BCrypt.Net.BCrypt.HashPassword(req.Password!) : null;
+        var payload = new PendingEmployeePayload(req with { Password = null, RoleType = roleType }, hash);
+
+        var request = new ApprovalRequest
         {
-            EmpCode = req.EmpCode,
-            Type = req.Type,
-            FullName = req.FullName,
-            Designation = req.Designation,
-            DepartmentId = req.DepartmentId,
-            OrgDepartmentId = req.OrgDepartmentId,
-            CompanyId = req.CompanyId,
-            ManagerId = req.ManagerId,
-            ShiftId = req.ShiftId,
-            RoleType = roleType,
-            DateOfJoining = req.DateOfJoining,
-            DateOfBirth = req.DateOfBirth,
-            DateOfLeaving = req.DateOfLeaving,
-            LeavingComments = req.LeavingComments,
-            LocationId = req.LocationId,
-            Email = req.Email,
-            PhoneNumber = req.PhoneNumber,
-            PhotoUrl = req.PhotoUrl,
-            MaritalStatus = req.MaritalStatus,
-            Status = req.DateOfLeaving.HasValue ? "Inactive" : "Active"
+            RequestType = "EMPLOYEE_ADD",
+            SummaryCode = req.EmpCode,
+            SummaryName = req.FullName,
+            Payload = JsonSerializer.Serialize(payload),
+            RequestedByEmployeeId = CallerId()
         };
+        _db.ApprovalRequests.Add(request);
+        await _db.SaveChangesAsync();
 
-        if (LoginRoles.Contains(roleType))
-        {
-            emp.PasswordHash = BCrypt.Net.BCrypt.HashPassword(req.Password!);
-            // No forced change on first login — the password set here at creation
-            // time is the one they keep using.
-        }
-
-        _db.Employees.Add(emp);
-        await _db.SaveChangesAsync(); // need emp.EmployeeId before the token can embed it
-
-        if (LoginRoles.Contains(roleType))
-        {
-            emp.JwtToken = _jwt.GenerateToken(emp);
-            await _db.SaveChangesAsync();
-        }
-
-        return CreatedAtAction(nameof(GetById), new { id = emp.EmployeeId }, emp);
+        return Accepted(new { approvalRequestId = request.ApprovalRequestId, pendingApproval = true,
+            message = $"{req.FullName} has been sent for approval and will be added once an Admin or SuperAdmin approves it." });
     }
 
     // PUT /api/employees/5
@@ -168,6 +144,11 @@ public class EmployeesController : ControllerBase
         if (LoginRoles.Contains(roleType) && !hasExistingLogin
             && await _db.Employees.AnyAsync(e => e.Email == req.Email && e.PasswordHash != null && e.EmployeeId != id))
             return Conflict(new { message = "An account with this email already exists." });
+
+        // Marking someone as leaving deactivates them, so it has to go through the same
+        // approval as Delete — it can't be done by typing a leaving date into this form.
+        if (req.DateOfLeaving.HasValue && emp.DateOfLeaving == null)
+            return BadRequest(new { message = "Deactivating an employee needs approval — use Delete on the Employees list, and set the leaving details here afterwards." });
 
         var roleChanged = emp.RoleType != roleType;
 
@@ -228,20 +209,11 @@ public class EmployeesController : ControllerBase
         return NoContent();
     }
 
-    private static string? ValidateLoginRequirements(string roleType, string? password, string? email, bool hasExistingLogin)
-    {
-        if (!LoginRoles.Contains(roleType)) return null;
-        if (string.IsNullOrWhiteSpace(email))
-            return "Email is required to grant HR/Admin/SuperAdmin access.";
-        if (!hasExistingLogin && string.IsNullOrWhiteSpace(password))
-            return "A password is required to grant HR/Admin/SuperAdmin access.";
-        if (!string.IsNullOrWhiteSpace(password) &&
-            (password.Length < 8 || !password.Any(char.IsDigit) || !password.Any(char.IsLetter)))
-            return "Password must be at least 8 characters and include both letters and numbers.";
-        return null;
-    }
+    private static string? ValidateLoginRequirements(string roleType, string? password, string? email, bool hasExistingLogin) =>
+        EmployeeRules.ValidateLoginRequirements(roleType, password, email, hasExistingLogin);
 
-    // DELETE /api/employees/5 — soft delete (HR record retention). Use ?hard=true for a real delete (SuperAdmin only).
+    // DELETE /api/employees/5 — deactivation REQUEST (needs Admin/SuperAdmin approval; the record is kept).
+    // ?hard=true is a real delete, SuperAdmin only, immediate, and not exposed in the UI.
     [HttpDelete("{id:int}")]
     [Authorize(Roles = "HR,Admin,SuperAdmin")]
     public async Task<IActionResult> Delete(int id, [FromQuery] bool hard = false)
@@ -260,9 +232,24 @@ public class EmployeesController : ControllerBase
         }
         else
         {
-            emp.Status = "Inactive";
-            emp.DateOfLeaving ??= DateOnly.FromDateTime(DateTime.UtcNow);
-            emp.UpdatedAt = DateTime.UtcNow;
+            // Deactivating is a request too: the employee stays Active until approved.
+            if (emp.Status == "Inactive")
+                return BadRequest(new { message = $"{emp.FullName} is already inactive." });
+            if (await _db.ApprovalRequests.AnyAsync(r => r.Status == "PENDING" && r.RequestType == "EMPLOYEE_DELETE" && r.TargetEmployeeId == id))
+                return Conflict(new { message = $"A request to deactivate {emp.FullName} is already waiting for approval." });
+
+            var request = new ApprovalRequest
+            {
+                RequestType = "EMPLOYEE_DELETE",
+                TargetEmployeeId = id,
+                SummaryCode = emp.EmpCode,
+                SummaryName = emp.FullName,
+                RequestedByEmployeeId = CallerId()
+            };
+            _db.ApprovalRequests.Add(request);
+            await _db.SaveChangesAsync();
+            return Accepted(new { approvalRequestId = request.ApprovalRequestId, pendingApproval = true,
+                message = $"Deactivating {emp.FullName} has been sent for approval." });
         }
 
         await _db.SaveChangesAsync();
@@ -288,6 +275,12 @@ public class EmployeesController : ControllerBase
 
         await _db.SaveChangesAsync();
         return NoContent();
+    }
+
+    private int? CallerId()
+    {
+        var v = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
+        return int.TryParse(v, out var id) ? id : null;
     }
 
     private int CallerRoleRank()

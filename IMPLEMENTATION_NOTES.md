@@ -46,7 +46,14 @@ joined and not yet left.
   or the amount is under the shift's "OT starts after", raised to 0 if under the
   department's minimum OT, and capped at its maximum OT.
 - **Rounded OT** = the configurable `ot_rounding_rules` row covering the calculated OT.
-- **Approved OT** = editable; a reason is required when it differs from rounded OT.
+- **OT status**: any rounded OT above zero starts `PENDING` and counts for nothing until an
+  Admin/SuperAdmin decides it (see *Approvals*). Approved OT is what the approver entered
+  (they may edit the minutes, at most the OT actually worked; a note is required if it differs
+  from the rounded figure). Rejected OT is skipped. Re-saving an entry keeps an earlier decision
+  only if the OT itself didn't change; otherwise it's pending again.
+- **Counted work** (`counted_work_minutes`) = min(actual, required) + approved OT. This is what
+  the *Work Hrs* column and the dashboard totals show; the raw punched time stays in
+  `actual_work_minutes`.
 - Everything is stored in minutes and shown as hours + minutes. The *Break* column on the
   Attendance screen is raw punch time minus actual work, so it reflects whichever mechanism
   (explicit gap or shift lunch) removed the time.
@@ -72,6 +79,29 @@ in the period (no proration).
 - Recording leave does **not** touch attendance — the two are separate for now.
 - A multi-day sick leave is recorded one date at a time.
 
+## Approvals
+
+Only Admin and SuperAdmin can see or use these (enforced in the API, not just the menu).
+
+- **Employees** — `POST /api/employees` and `DELETE /api/employees/{id}` no longer act directly;
+  they create a row in `approval_requests` (`EMPLOYEE_ADD` / `EMPLOYEE_DELETE`). For an add, the
+  full employee details (and bank details) sit in the row's JSON `payload`, with the login
+  password already hashed — the plain password is never stored. Approving an add creates the
+  employee, in one transaction with marking the request approved; approving a delete sets the
+  employee Inactive and stamps today as the leaving date. Both are re-checked at approval time
+  (the employee ID may have been taken in the meantime).
+- **Hierarchy** — you can't approve a request above your own role (`EmployeeRules.CanManage`), the
+  same rule that already limits who can create or edit whom. An approver *may* approve their own
+  request, otherwise a lone SuperAdmin could never add anyone.
+- **Not gated** — editing an existing employee and reactivating one stay immediate. Marking
+  someone as leaving by typing a leaving date into the edit form is refused (it would sidestep
+  the deactivation approval); use Delete. `?hard=true` (a real delete, SuperAdmin only) is API-only,
+  not in the UI, and not subject to approval.
+- **Overtime** — see *Attendance calculation*. `GET /api/approvals/overtime` lists entries by OT
+  status; `approve` takes optional `approvedMinutes` and `note`, `reject` an optional `note`.
+- There is no notification back to the person who raised a request — they see the result on the
+  Employees list (a deactivation shows "pending" until decided; an added employee appears once approved).
+
 ## Database
 
 - **New database:** run `database/schema.sql` only.
@@ -82,5 +112,5 @@ in the period (no proration).
 ## API areas
 
 `/api/auth`, `/api/employees`, `/api/departments` (payroll), `/api/org-departments`,
-`/api/shifts`, `/api/shift-mappings` (+ `/resolve`, `/calendar`), `/api/leave` (+ `/types`, `/balances`, `/entries`, `/adjustments`), `/api/attendance`
+`/api/approvals` (+ `/summary`, `/employees`, `/overtime`), `/api/shifts`, `/api/shift-mappings` (+ `/resolve`, `/calendar`), `/api/leave` (+ `/types`, `/balances`, `/entries`, `/adjustments`), `/api/attendance`
 (+ `/statuses`, `/rounding-rules`, `/calculate`), `/api/dashboard/stats`.

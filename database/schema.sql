@@ -2,6 +2,7 @@
 -- Company HR / ERP — PostgreSQL schema
 -- ============================================================
 
+DROP TABLE IF EXISTS approval_requests CASCADE;
 DROP TABLE IF EXISTS leave_entries CASCADE;
 DROP TABLE IF EXISTS leave_types CASCADE;
 DROP TABLE IF EXISTS shift_mappings CASCADE;
@@ -201,6 +202,25 @@ CREATE TABLE leave_entries (
 );
 CREATE INDEX idx_leave_entries_emp_type_date ON leave_entries (employee_id, leave_type_id, leave_date);
 
+-- Requests to add or deactivate an employee. Nothing touches `employees` until an
+-- Admin/SuperAdmin approves. For EMPLOYEE_ADD the full details sit in `payload`
+-- (JSON text; the login password is stored only as a hash, never in plain text).
+CREATE TABLE approval_requests (
+    approval_request_id       SERIAL PRIMARY KEY,
+    request_type              VARCHAR(20) NOT NULL CHECK (request_type IN ('EMPLOYEE_ADD','EMPLOYEE_DELETE')),
+    status                    VARCHAR(10) NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING','APPROVED','REJECTED')),
+    target_employee_id        INT REFERENCES employees(employee_id) ON DELETE SET NULL,
+    summary_code              VARCHAR(30),
+    summary_name              VARCHAR(150) NOT NULL,
+    payload                   TEXT NOT NULL DEFAULT '{}',
+    requested_by_employee_id  INT REFERENCES employees(employee_id) ON DELETE SET NULL,
+    requested_at              TIMESTAMP NOT NULL DEFAULT now(),
+    decided_by_employee_id    INT REFERENCES employees(employee_id) ON DELETE SET NULL,
+    decided_at                TIMESTAMP,
+    decision_note             TEXT
+);
+CREATE INDEX idx_approval_requests_status ON approval_requests (status, request_type);
+
 CREATE TABLE attendance_statuses (
     attendance_status_id SERIAL PRIMARY KEY,
     status               VARCHAR(30) NOT NULL UNIQUE,
@@ -229,15 +249,23 @@ CREATE TABLE attendance_entries (
     required_work_minutes INT NOT NULL DEFAULT 0,
     calculated_ot_minutes INT NOT NULL DEFAULT 0,
     rounded_ot_minutes    INT NOT NULL DEFAULT 0,
-    approved_ot_minutes   INT NOT NULL DEFAULT 0,
-    reason                TEXT,
+    approved_ot_minutes   INT NOT NULL DEFAULT 0,     -- only non-zero once the OT is APPROVED
+    reason                TEXT,                       -- the OT approver's note
     comments              TEXT,
+    -- OT approval: any OT > 0 is PENDING until an Admin/SuperAdmin approves (possibly
+    -- editing the minutes) or rejects it. Pending/rejected OT counts for nothing.
+    ot_status             VARCHAR(10) NOT NULL DEFAULT 'NONE'
+                          CHECK (ot_status IN ('NONE','PENDING','APPROVED','REJECTED')),
+    counted_work_minutes  INT NOT NULL DEFAULT 0,     -- min(actual, required) + approved OT: what counts toward pay
+    ot_decided_by_employee_id INT REFERENCES employees(employee_id) ON DELETE SET NULL,
+    ot_decided_at         TIMESTAMP,
     created_by_user_id    INT REFERENCES employees(employee_id),
     created_at            TIMESTAMP NOT NULL DEFAULT now(),
     updated_at            TIMESTAMP NOT NULL DEFAULT now(),
     UNIQUE(employee_id, attendance_date)
 );
 CREATE INDEX idx_attendance_date ON attendance_entries(attendance_date);
+CREATE INDEX idx_attendance_ot_status ON attendance_entries(ot_status) WHERE ot_status = 'PENDING';
 CREATE INDEX idx_attendance_employee ON attendance_entries(employee_id, attendance_date);
 
 -- One row per In/Out pair for a day, instead of a fixed in1..out5 column set —
@@ -424,9 +452,13 @@ WITH src(emp_code, attendance_date, actual_minutes, status_code, ot_minutes) AS 
 inserted AS (
     INSERT INTO attendance_entries
         (employee_id, attendance_date, shift_id, attendance_status_id, entry_type,
-         actual_work_minutes, required_work_minutes, calculated_ot_minutes, rounded_ot_minutes, approved_ot_minutes)
+         actual_work_minutes, required_work_minutes, calculated_ot_minutes, rounded_ot_minutes, approved_ot_minutes,
+         ot_status, counted_work_minutes)
     SELECT e.employee_id, s.attendance_date, 1, st.attendance_status_id, 'Biometric',
-           s.actual_minutes, 480, s.ot_minutes, s.ot_minutes, s.ot_minutes
+           s.actual_minutes, 480, s.ot_minutes, s.ot_minutes,
+           CASE WHEN s.attendance_date = DATE '2026-08-28' THEN 0 ELSE s.ot_minutes END,
+           CASE WHEN s.ot_minutes = 0 THEN 'NONE' WHEN s.attendance_date = DATE '2026-08-28' THEN 'PENDING' ELSE 'APPROVED' END,
+           LEAST(s.actual_minutes, 480) + CASE WHEN s.attendance_date = DATE '2026-08-28' THEN 0 ELSE s.ot_minutes END
     FROM src s
     JOIN employees e ON e.emp_code = s.emp_code
     JOIN attendance_statuses st ON st.status = s.status_code
