@@ -12,6 +12,8 @@ public class AppDbContext : DbContext
     public DbSet<Department> Departments => Set<Department>();
     public DbSet<OrgDepartment> OrgDepartments => Set<OrgDepartment>();
     public DbSet<ShiftMapping> ShiftMappings => Set<ShiftMapping>();
+    public DbSet<LeaveType> LeaveTypes => Set<LeaveType>();
+    public DbSet<LeaveEntry> LeaveEntries => Set<LeaveEntry>();
     public DbSet<Employee> Employees => Set<Employee>();
     public DbSet<BankDetail> BankDetails => Set<BankDetail>();
     public DbSet<ProofDocument> ProofDocuments => Set<ProofDocument>();
@@ -51,6 +53,37 @@ public class AppDbContext : DbContext
             e.Property(x => x.OrgDepartmentId).HasColumnName("org_department_id");
             e.Property(x => x.DepartmentName).HasColumnName("department_name");
             e.HasIndex(x => x.DepartmentName).IsUnique();
+        });
+
+        modelBuilder.Entity<LeaveType>(e =>
+        {
+            e.ToTable("leave_types");
+            e.HasKey(x => x.LeaveTypeId);
+            e.Property(x => x.LeaveTypeId).HasColumnName("leave_type_id");
+            e.Property(x => x.Code).HasColumnName("code");
+            e.Property(x => x.Name).HasColumnName("name");
+            e.Property(x => x.Unit).HasColumnName("unit");
+            e.Property(x => x.Period).HasColumnName("period");
+            e.Property(x => x.Allowance).HasColumnName("allowance").HasPrecision(8, 2);
+            e.Property(x => x.Step).HasColumnName("step").HasPrecision(8, 2);
+            e.HasIndex(x => x.Code).IsUnique();
+        });
+
+        modelBuilder.Entity<LeaveEntry>(e =>
+        {
+            e.ToTable("leave_entries");
+            e.HasKey(x => x.LeaveEntryId);
+            e.Property(x => x.LeaveEntryId).HasColumnName("leave_entry_id");
+            e.Property(x => x.EmployeeId).HasColumnName("employee_id");
+            e.Property(x => x.LeaveTypeId).HasColumnName("leave_type_id");
+            e.Property(x => x.Kind).HasColumnName("kind");
+            e.Property(x => x.LeaveDate).HasColumnName("leave_date");
+            e.Property(x => x.Amount).HasColumnName("amount").HasPrecision(8, 2);
+            e.Property(x => x.Reason).HasColumnName("reason");
+            e.Property(x => x.CreatedByEmployeeId).HasColumnName("created_by_employee_id");
+            e.Property(x => x.CreatedAt).HasColumnName("created_at");
+            e.HasOne(x => x.Employee).WithMany().HasForeignKey(x => x.EmployeeId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.LeaveType).WithMany().HasForeignKey(x => x.LeaveTypeId);
         });
 
         modelBuilder.Entity<ShiftMapping>(e =>

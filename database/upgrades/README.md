@@ -11,3 +11,4 @@ to keep: it starts by dropping every table.
 | Script | Adds |
 |---|---|
 | `2026-10-batch1-departments-and-shift-mapping.sql` | Department list, Shift Mapping, removes the shift OT-Allowed / Late After / Early Out columns |
+| `2026-10-batch2-leave.sql` | Leave policy (`leave_types`) and recorded leave (`leave_entries`) for the Leave screen. Run after batch 1 (the app expects both) |

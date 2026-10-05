@@ -31,7 +31,7 @@ No demo companies-only setup here — the database starts with real reference
 data (companies/departments/shifts/locations), a SuperAdmin login, two more
 sample login accounts (HR and Admin), and a couple of plain employee records.
 Add more real people through the app itself once you're in. A couple of demo Shift Mappings
-are seeded too so the Shift Calendar has something to show.
+and some recorded leave are seeded too so the Shift Calendar and Leave screen have something to show.
 
 **Already have a database with data?** Don't run `schema.sql` — it starts by dropping every
 table. Run the matching script(s) in [`database/upgrades/`](./database/upgrades/) instead
@@ -132,6 +132,7 @@ Token lifetime is set in `appsettings.json` under `Jwt:ExpiryMinutes`
 | **Shift Mapping** | Put an employee on a different shift for a date range (Start Date, End Date, Employee, Shift) — e.g. a General-shift employee covering a week of nights. Overlapping ranges for one employee are rejected. The Daily Attendance screen picks up the mapped shift for the date, otherwise the employee's own shift |
 | **Shift Calendar** | Teams-style month view: for each day, how many employees are on each shift (colour-coded). Click a day to see who; filter by Department |
 | **Daily Attendance Entry** | HR/Admin/SuperAdmin record each employee's day: shift, attendance type, and an unlimited number of In/Out punch pairs (add as many as actually happened — no fixed cap). Automatically calculates actual work, required work (from Department), calculated OT, and rounded OT (floor to nearest 30 minutes); Approved OT is editable with a required reason if it differs from the rounded value |
+| **Leave** | Select an employee and a date to see their balances, then record leave taken with **Add Leave**. Balances come from policy automatically — nobody grants them: **Sick Leave** 6 days per calendar year (whole days), **Casual Leave** 1 day per month (0.5 or 1), **Permission** 120 minutes per month. Each period stands alone — unused leave lapses, nothing carries forward. Over-balance requests are rejected, and at most one day of leave can be recorded per date. Admin/SuperAdmin also get **Adjust balance** (reason required) for exceptions, and can remove adjustments; HR can remove leave they recorded by mistake |
 | **Dashboard** | Headcount KPIs (total/active/contract, today's present count and approved OT), plus an **Attendance Explorer** — pick a month and browse either a company-wide summary or one employee's full day-by-day record |
 
 All time values are stored in minutes internally and displayed in hours for

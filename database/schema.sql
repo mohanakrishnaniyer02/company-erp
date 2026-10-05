@@ -2,6 +2,8 @@
 -- Company HR / ERP — PostgreSQL schema
 -- ============================================================
 
+DROP TABLE IF EXISTS leave_entries CASCADE;
+DROP TABLE IF EXISTS leave_types CASCADE;
 DROP TABLE IF EXISTS shift_mappings CASCADE;
 DROP TABLE IF EXISTS attendance_punches CASCADE;
 DROP TABLE IF EXISTS attendance_entries CASCADE;
@@ -172,6 +174,33 @@ CREATE TABLE shift_mappings (
 );
 CREATE INDEX idx_shift_mappings_employee_dates ON shift_mappings (employee_id, start_date, end_date);
 
+-- Leave policy. Balances are NOT stored: entitlement comes from this table
+-- (per employee, per period; unused leave lapses, nothing carries forward) and
+-- leave_entries below records only what was taken or manually adjusted.
+CREATE TABLE leave_types (
+    leave_type_id   SERIAL PRIMARY KEY,
+    code            VARCHAR(20) NOT NULL UNIQUE,
+    name            VARCHAR(60) NOT NULL,
+    unit            VARCHAR(10) NOT NULL CHECK (unit IN ('DAYS','MINUTES')),
+    period          VARCHAR(10) NOT NULL CHECK (period IN ('YEAR','MONTH')),   -- YEAR = calendar year Jan-Dec
+    allowance       NUMERIC(8,2) NOT NULL CHECK (allowance >= 0),               -- per period, in `unit`
+    step            NUMERIC(8,2) NOT NULL CHECK (step > 0)                      -- smallest recordable amount
+);
+
+CREATE TABLE leave_entries (
+    leave_entry_id          SERIAL PRIMARY KEY,
+    employee_id             INT NOT NULL REFERENCES employees(employee_id) ON DELETE CASCADE,
+    leave_type_id           INT NOT NULL REFERENCES leave_types(leave_type_id),
+    kind                    VARCHAR(10) NOT NULL CHECK (kind IN ('TAKEN','ADJUST')),
+    leave_date              DATE NOT NULL,          -- decides which year/month period it counts against
+    amount                  NUMERIC(8,2) NOT NULL,  -- TAKEN: positive, deducts. ADJUST: signed, +adds / -deducts
+    reason                  TEXT,
+    created_by_employee_id  INT REFERENCES employees(employee_id) ON DELETE SET NULL,
+    created_at              TIMESTAMP NOT NULL DEFAULT now(),
+    CHECK ((kind = 'TAKEN' AND amount > 0) OR (kind = 'ADJUST' AND amount <> 0 AND reason IS NOT NULL))
+);
+CREATE INDEX idx_leave_entries_emp_type_date ON leave_entries (employee_id, leave_type_id, leave_date);
+
 CREATE TABLE attendance_statuses (
     attendance_status_id SERIAL PRIMARY KEY,
     status               VARCHAR(30) NOT NULL UNIQUE,
@@ -256,6 +285,11 @@ VALUES
 ('DAY', 'Day Shift', '09:30','18:30','13:00','13:30',10,10,240,240,480,0,FALSE,'Active'),
 ('NIGHT', 'Night Shift', '21:30','06:30','01:30','02:00',10,10,240,240,480,0,TRUE,'Active');
 
+INSERT INTO leave_types (code, name, unit, period, allowance, step) VALUES
+ ('SICK',       'Sick Leave',   'DAYS',    'YEAR',   6,   1),
+ ('CASUAL',     'Casual Leave', 'DAYS',    'MONTH',  1,   0.5),
+ ('PERMISSION', 'Permission',   'MINUTES', 'MONTH',  120, 1);
+
 INSERT INTO org_departments (department_name) VALUES
  ('Technology'), ('Product & Design'), ('Finance & Accounts'), ('People & Culture'), ('Quality & Operations');
 
@@ -321,6 +355,20 @@ FROM employees e, shift_templates s WHERE e.emp_code = 'EMP-0004' AND s.shift_co
 INSERT INTO shift_mappings (employee_id, shift_id, start_date, end_date)
 SELECT e.employee_id, s.shift_id, DATE '2026-10-12', DATE '2026-10-18'
 FROM employees e, shift_templates s WHERE e.emp_code = 'EMP-0006' AND s.shift_code = 'NIGHT';
+
+-- A few recorded leaves so the Leave screen has history to show.
+INSERT INTO leave_entries (employee_id, leave_type_id, kind, leave_date, amount, reason, created_by_employee_id)
+SELECT e.employee_id, t.leave_type_id, 'TAKEN', d.leave_date, d.amount, d.note,
+       (SELECT employee_id FROM employees WHERE emp_code = 'SUPERADMIN-001')
+FROM (VALUES
+  ('EMP-0004', 'SICK',       DATE '2026-08-27', 1,  'Fever'),
+  ('EMP-0002', 'CASUAL',     DATE '2026-10-02', 1,  NULL),
+  ('EMP-0006', 'CASUAL',     DATE '2026-10-05', 0.5, 'Half day'),
+  ('EMP-0003', 'PERMISSION', DATE '2026-10-01', 45, 'Bank visit'),
+  ('EMP-0003', 'PERMISSION', DATE '2026-10-03', 30, NULL)
+) AS d(emp_code, leave_code, leave_date, amount, note)
+JOIN employees e ON e.emp_code = d.emp_code
+JOIN leave_types t ON t.code = d.leave_code;
 
 -- A little more depth on two profiles, so the Bank Details / Proof / Address
 -- / Education tabs aren't empty in a demo either.

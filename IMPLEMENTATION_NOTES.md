@@ -51,6 +51,27 @@ joined and not yet left.
   Attendance screen is raw punch time minus actual work, so it reflects whichever mechanism
   (explicit gap or shift lunch) removed the time.
 
+## Leave
+
+Balances are **derived, never stored**. `leave_types` holds the policy (Sick 6 days/year,
+Casual 1 day/month in 0.5 steps, Permission 120 minutes/month) and `leave_entries` records
+only what happened: `TAKEN` (positive, deducts) or `ADJUST` (signed, reason required —
+for exceptions). For any date, the balance is the entitlement of the period containing it
+(calendar year for Sick, month for Casual/Permission) plus adjustments minus leave taken
+in that same period, so every employee always has the right entitlement with no one
+granting it. Entitlement is the full allowance if the employee was employed at any point
+in the period (no proration).
+
+- **No carry forward** — each period stands alone; unused leave lapses. Carry-forward was
+  deliberately left out ("not clear yet"); adding it later means changing how a period's
+  entitlement is computed in `LeaveRules`, not the tables.
+- Leave can't exceed the remaining balance, must be in steps (`step` in `leave_types`:
+  1 day / 0.5 day / 1 minute), and at most one day of leave can be recorded per date
+  across the day-based types. The rules live in `Services/LeaveRules.cs`, free of database
+  access.
+- Recording leave does **not** touch attendance — the two are separate for now.
+- A multi-day sick leave is recorded one date at a time.
+
 ## Database
 
 - **New database:** run `database/schema.sql` only.
@@ -61,5 +82,5 @@ joined and not yet left.
 ## API areas
 
 `/api/auth`, `/api/employees`, `/api/departments` (payroll), `/api/org-departments`,
-`/api/shifts`, `/api/shift-mappings` (+ `/resolve`, `/calendar`), `/api/attendance`
+`/api/shifts`, `/api/shift-mappings` (+ `/resolve`, `/calendar`), `/api/leave` (+ `/types`, `/balances`, `/entries`, `/adjustments`), `/api/attendance`
 (+ `/statuses`, `/rounding-rules`, `/calculate`), `/api/dashboard/stats`.

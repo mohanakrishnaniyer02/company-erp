@@ -8,6 +8,7 @@ import Departments from './pages/Departments.jsx'
 import Shifts from './pages/Shifts.jsx'
 import ShiftMapping from './pages/ShiftMapping.jsx'
 import ShiftCalendar from './pages/ShiftCalendar.jsx'
+import Leave from './pages/Leave.jsx'
 import Attendance from './pages/Attendance.jsx'
 import ProtectedRoute from './components/ProtectedRoute.jsx'
 import RequireRole from './components/RequireRole.jsx'
@@ -32,6 +33,7 @@ export default function App() {
             <Route path="/shift-mapping" element={<ShiftMapping />} />
             <Route path="/shift-calendar" element={<ShiftCalendar />} />
             <Route path="/attendance" element={<Attendance />} />
+            <Route path="/leave" element={<Leave />} />
           </Route>
         </Route>
       </Route>

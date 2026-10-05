@@ -84,3 +84,15 @@ public record DashboardAttendance(
     int OnDuty, int Other, int TotalRecorded, int TotalWorkMinutes, int TotalOtMinutes);
 
 public record DeptCount(string Department, int Count);
+
+public record LeaveEntryRequest(int EmployeeId, int LeaveTypeId, DateOnly LeaveDate, decimal Amount, string? Reason);
+
+public record LeaveAdjustmentRequest(int EmployeeId, int LeaveTypeId, DateOnly EffectiveDate, decimal Amount, string Reason);
+
+public record LeaveBalanceItem(
+    int LeaveTypeId, string Code, string Name, string Unit, string Period, string PeriodLabel,
+    decimal Entitlement, decimal Adjusted, decimal Taken, decimal Remaining, decimal Step);
+
+public record LeaveEntryItem(
+    int LeaveEntryId, int LeaveTypeId, string LeaveTypeName, string Unit, string Kind,
+    DateOnly LeaveDate, decimal Amount, string? Reason, string? RecordedBy, DateTime CreatedAt);
