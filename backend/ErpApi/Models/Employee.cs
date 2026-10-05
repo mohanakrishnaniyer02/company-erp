@@ -11,7 +11,9 @@ public class Employee
     public string FullName { get; set; } = string.Empty;
     public string? Designation { get; set; }
     public int? DepartmentId { get; set; }
-    public Department? Department { get; set; }
+    public Department? Department { get; set; }          // Payroll Department (OT policy / required hours)
+    public int? OrgDepartmentId { get; set; }
+    public OrgDepartment? OrgDepartment { get; set; }    // organisational Department
     public int? CompanyId { get; set; }
     public Company? Company { get; set; }
     public int? ManagerId { get; set; }

@@ -24,6 +24,12 @@ export default function AppShell() {
           <NavLink to="/shifts" className={({isActive}) => 'side-link' + (isActive ? ' active' : '')} title="Shifts">
             <span className="ic">◷</span><span className="label">Shifts</span>
           </NavLink>
+          <NavLink to="/shift-mapping" className={({isActive}) => 'side-link' + (isActive ? ' active' : '')} title="Shift Mapping">
+            <span className="ic">⇄</span><span className="label">Shift Mapping</span>
+          </NavLink>
+          <NavLink to="/shift-calendar" className={({isActive}) => 'side-link' + (isActive ? ' active' : '')} title="Shift Calendar">
+            <span className="ic">▦</span><span className="label">Shift Calendar</span>
+          </NavLink>
           <NavLink to="/attendance" className={({isActive}) => 'side-link' + (isActive ? ' active' : '')} title="Daily Attendance">
             <span className="ic">✓</span><span className="label">Daily Attendance</span>
           </NavLink>

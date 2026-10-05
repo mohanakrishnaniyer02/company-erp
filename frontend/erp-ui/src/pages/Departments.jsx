@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import api from '../api/client'
 import Topbar from '../components/Topbar.jsx'
+import OrgDepartmentsPanel from './OrgDepartmentsPanel.jsx'
 
 const empty = { departmentName:'', otAllowed:false, minOtMinutes:'', maxOtMinutes:'', requiredWorkMinutes:'480' }
 
@@ -9,7 +10,7 @@ function mins(v) {
   return `${Math.floor(n / 60)}h ${n % 60}m`
 }
 
-export default function Departments() {
+function PayrollDepartmentsPanel() {
   const [items, setItems] = useState([])
   const [form, setForm] = useState(empty)
   const [editingId, setEditingId] = useState(null)
@@ -50,7 +51,7 @@ export default function Departments() {
     try {
       if (editingId) await api.put(`/departments/${editingId}`, payload)
       else await api.post('/departments', payload)
-      setSuccess(editingId ? 'Department updated.' : 'Department created.')
+      setSuccess(editingId ? 'Payroll department updated.' : 'Payroll department created.')
       reset(); load()
     } catch (err) { setError(err.response?.data?.message || 'Could not save department.') }
   }
@@ -63,10 +64,8 @@ export default function Departments() {
 
   return (
     <>
-      <Topbar />
-      <div className="page-head">
-        <div><h1>Departments</h1><p>Configure required work hours and department OT policy.</p></div>
-        <button type="button" className="btn-blue" onClick={showForm?reset:startAdd}>{showForm?'Cancel':'＋ Add Department'}</button>
+      <div style={{display:'flex', justifyContent:'flex-end', marginBottom:16}}>
+        <button type="button" className="btn-blue" onClick={showForm?reset:startAdd}>{showForm?'Cancel':'＋ Add Payroll Department'}</button>
       </div>
 
       {error && <div className="auth-error" style={{marginBottom:16}}>{error}</div>}
@@ -76,14 +75,14 @@ export default function Departments() {
         <div className="modal-overlay" onClick={reset}>
           <div className="modal-box" onClick={e=>e.stopPropagation()}>
             <div className="modal-head">
-              <h3>{editingId ? 'Edit Department' : 'Add Department'}</h3>
+              <h3>{editingId ? 'Edit Payroll Department' : 'Add Payroll Department'}</h3>
               <button type="button" className="icon-btn" onClick={reset} title="Close">✕</button>
             </div>
             <form onSubmit={save}>
               <p className="card-sub">All work-hour values are stored in minutes.</p>
               <div className="form-grid two">
                 <div className="field" style={{gridColumn:'1/-1'}}>
-                  <label>Department Name <span className="req">*</span></label>
+                  <label>Payroll Department Name <span className="req">*</span></label>
                   <input required value={form.departmentName} onChange={e=>set('departmentName',e.target.value)} />
                 </div>
                 <div className="field">
@@ -104,7 +103,7 @@ export default function Departments() {
               </div>
               <div style={{display:'flex', justifyContent:'flex-end', gap:10, marginTop:20, paddingTop:16, borderTop:'1px solid var(--line)'}}>
                 <button type="button" className="btn-ghost" onClick={reset}>Cancel</button>
-                <button className="btn-blue" type="submit">{editingId ? 'Update Department':'Save Department'}</button>
+                <button className="btn-blue" type="submit">{editingId ? 'Update Payroll Department':'Save Payroll Department'}</button>
               </div>
             </form>
           </div>
@@ -114,7 +113,7 @@ export default function Departments() {
       <div className="table-card">
         <div className="table-scroll">
           <table className="emp-table">
-            <thead><tr><th>Department</th><th>OT</th><th>Min OT</th><th>Max OT</th><th>Required</th><th></th></tr></thead>
+            <thead><tr><th>Payroll Department</th><th>OT</th><th>Min OT</th><th>Max OT</th><th>Required</th><th></th></tr></thead>
             <tbody>
               {items.map(d => (
                 <tr key={d.departmentId}>
@@ -126,11 +125,33 @@ export default function Departments() {
                   <td><div className="row-actions"><button className="edit" title="Edit" onClick={()=>edit(d)}>✎</button><button className="del" title="Delete" onClick={()=>remove(d)}>🗑</button></div></td>
                 </tr>
               ))}
-              {items.length===0 && <tr className="empty-row"><td colSpan="6">No departments configured.</td></tr>}
+              {items.length===0 && <tr className="empty-row"><td colSpan="6">No payroll departments configured.</td></tr>}
             </tbody>
           </table>
         </div>
       </div>
+    </>
+  )
+}
+
+export default function Departments() {
+  const [tab, setTab] = useState('payroll')
+  return (
+    <>
+      <Topbar />
+      <div className="page-head">
+        <div>
+          <h1>Departments</h1>
+          <p>{tab === 'payroll'
+            ? 'Payroll departments set the required work hours and OT policy used in attendance calculation.'
+            : 'The organisational departments employees belong to.'}</p>
+        </div>
+      </div>
+      <div className="tabs" style={{marginBottom:20, border:'1px solid var(--line)', borderRadius:12, overflow:'hidden'}}>
+        <button type="button" className={'tab-btn' + (tab==='payroll' ? ' active' : '')} onClick={() => setTab('payroll')}>Payroll Departments</button>
+        <button type="button" className={'tab-btn' + (tab==='org' ? ' active' : '')} onClick={() => setTab('org')}>Departments</button>
+      </div>
+      {tab === 'payroll' ? <PayrollDepartmentsPanel /> : <OrgDepartmentsPanel />}
     </>
   )
 }

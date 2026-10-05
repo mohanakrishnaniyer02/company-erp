@@ -1,69 +1,65 @@
-# Attendance / Department / Shift Upgrade
+# Design notes
 
-This version builds on the existing ERP project.
+How the pieces fit together. For setup see `README.md`; for deployment see `DEPLOYMENT.md`.
 
-## Main changes
+## Two kinds of "department"
 
-1. Removed the Users page from the application navigation/routes.
-2. Added `Role Type` and `Shift` dropdowns to Employee > Basic Details.
-3. Added Departments master:
-   - Department Name
-   - OT Allowed
-   - Minimum OT Minutes
-   - Maximum OT Minutes
-   - Required Work Minutes
-4. Replaced the old shift-template UI with a full Shifts master:
-   - Shift ID
-   - Shift Code
-   - Shift Name
-   - Shift start/end
-   - Lunch start/end
-   - Grace in/out
-   - Late after
-   - Early out
-   - Minimum / Half-day / Full-day minutes
-   - OT allowed
-   - OT start-after minutes
-   - Night shift
-   - Status
-5. Added Daily Attendance Entry for HR/Admin/SuperAdmin.
-6. Attendance supports an unlimited number of In/Out pairs per day (a normalized `attendance_punches` table, not a fixed column count). Values are stored as minutes for calculation and displayed as hours + minutes.
-7. Added server-side time calculation:
-   - Actual work = sum of punch intervals minus configured lunch overlap.
-   - Required work = employee department required work minutes.
-   - Calculated OT = actual - required, subject to department/shift OT policy.
-   - Rounded OT = configurable rounding rule.
-   - Approved OT = editable; a reason is required when it differs from rounded OT.
-8. Added configurable OT rounding rules and seeded rules matching the supplied example.
-9. Dashboard now includes today's attendance, work minutes and approved OT.
+- **Payroll Department** (`departments` table, Departments → *Payroll Departments* tab) —
+  carries the payroll rules: whether OT is allowed, minimum/maximum OT, and the required
+  work minutes per day. Attendance calculation reads these. On the employee it's the
+  *Payroll Department* field (`employees.department_id`).
+- **Department** (`org_departments` table, Departments → *Departments* tab) — just a name:
+  the organisational department an employee belongs to (`employees.org_department_id`).
+  Used for grouping/filtering (e.g. the Shift Calendar and Shift Mapping pickers).
+  The Attendance screens still filter by Payroll Department.
+
+## Shifts
+
+A shift has: code, name, start/end, lunch start/end, grace in/out, minimum / half-day /
+full-day minutes, "OT starts after" minutes, night-shift flag, status. Whether OT is
+allowed at all is **not** a shift setting — that comes from the employee's Payroll
+Department. (Late-after and early-out were dropped; grace in/out covers them.)
+
+### Which shift applies on a given day
+
+1. A **Shift Mapping** covering that date for that employee (start/end dates inclusive), else
+2. the employee's own shift (`employees.shift_id`, their first-allocated/default shift), else
+3. none.
+
+Mappings for the same employee may not overlap. The Daily Attendance modal resolves the
+shift this way when you pick an employee and date (and says whether it was mapped or the
+default); the Shift Calendar uses the same rule, restricted to days the employee has
+joined and not yet left.
+
+## Attendance calculation (server side, `AttendanceController`)
+
+- **Punches** are stored one row per In/Out pair in `attendance_punches`, under a single
+  `attendance_entries` row per employee per day (`UNIQUE(employee_id, attendance_date)`).
+  There is no fixed limit on pairs.
+- **Actual work** = sum of each pair's duration, minus the overlap of that pair with the
+  shift's lunch window. A gap *between* pairs is simply never counted, so a longer-than-
+  scheduled lunch is captured by entering two pairs; the shift's lunch window only acts as
+  the fallback for a single continuous pair.
+- **Required work** = the Payroll Department's required minutes (shift full-day minutes if
+  none).
+- **Calculated OT** = actual − required, forced to 0 if the Payroll Department disallows OT
+  or the amount is under the shift's "OT starts after", raised to 0 if under the
+  department's minimum OT, and capped at its maximum OT.
+- **Rounded OT** = the configurable `ot_rounding_rules` row covering the calculated OT.
+- **Approved OT** = editable; a reason is required when it differs from rounded OT.
+- Everything is stored in minutes and shown as hours + minutes. The *Break* column on the
+  Attendance screen is raw punch time minus actual work, so it reflects whichever mechanism
+  (explicit gap or shift lunch) removed the time.
 
 ## Database
 
-### New database
-Run `database/schema.sql`.
-
-### Existing database
-All migrations have been folded into `database/schema.sql` and were already
-applied to the live database as they were introduced — there's no longer a
-`database/migrations/` folder to run separately (removed once every
-environment had them applied, since running them against a database already
-on the current schema would fail).
-
-Do not run the full schema file against an existing production database because it intentionally drops and recreates tables.
+- **New database:** run `database/schema.sql` only.
+- **Existing database you want to keep:** run the scripts in `database/upgrades/` for the
+  batches you're missing (see the README in that folder). Never run `schema.sql` on a
+  database with data you care about — it drops and recreates every table.
 
 ## API areas
 
-- `/api/departments`
-- `/api/shifts`
-- `/api/attendance`
-- `/api/attendance/statuses`
-- `/api/attendance/rounding-rules`
-- `/api/dashboard/stats`
-
-## Attendance design note
-
-Five punch pairs were implemented because that matches the requested UI and keeps the attendance row compact. If biometric devices may produce many punches per day, the next scalability step should be a child `attendance_punches` table (one row per punch) while retaining a calculated summary on `attendance_entries`. That avoids a hard five-pair limit without making the normal payroll query expensive.
-
-## Role note
-
-`Employee.RoleType` is the employee master field requested for User/HR/Admin/SuperAdmin. It is separate from the existing authentication `users` table. The Users navigation was removed, but the authentication backend remains so existing login accounts continue to work.
+`/api/auth`, `/api/employees`, `/api/departments` (payroll), `/api/org-departments`,
+`/api/shifts`, `/api/shift-mappings` (+ `/resolve`, `/calendar`), `/api/attendance`
+(+ `/statuses`, `/rounding-rules`, `/calculate`), `/api/dashboard/stats`.

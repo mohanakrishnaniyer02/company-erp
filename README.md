@@ -22,7 +22,7 @@ erp-system/
 ## 1. Database
 
 Run `database/schema.sql` once. That's it — it creates every table and seeds:
-- 3 companies, 4 locations, 4 departments, 2 shift templates (Day/Night)
+- 3 companies, 4 locations, 4 payroll departments, 5 departments, 2 shift templates (Day/Night)
 - 8 attendance status types (Present, Absent, Half Day, Weekly Off, Holiday,
   Paid Leave, Unpaid Leave, On Duty) and their OT rounding rules
 - **One working bootstrap login** (see [Authentication](#4-authentication--roles) below)
@@ -30,7 +30,12 @@ Run `database/schema.sql` once. That's it — it creates every table and seeds:
 No demo companies-only setup here — the database starts with real reference
 data (companies/departments/shifts/locations), a SuperAdmin login, two more
 sample login accounts (HR and Admin), and a couple of plain employee records.
-Add more real people through the app itself once you're in.
+Add more real people through the app itself once you're in. A couple of demo Shift Mappings
+are seeded too so the Shift Calendar has something to show.
+
+**Already have a database with data?** Don't run `schema.sql` — it starts by dropping every
+table. Run the matching script(s) in [`database/upgrades/`](./database/upgrades/) instead
+(each is safe to run more than once and keeps your data).
 
 ## 2. Backend (.NET 8 Web API)
 
@@ -122,8 +127,10 @@ Token lifetime is set in `appsettings.json` under `Jwt:ExpiryMinutes`
 | Module | What it does |
 |---|---|
 | **Employees** | List, search, filter by Regular/Contract and Role Type. Add/Edit covers Basic Details (incl. Role Type, Department, Shift), Bank Details, Proof/Documents, Address, Education |
-| **Departments** | Master data: name, OT allowed, min/max OT time, required work hours per day. Feeds the Department dropdown on Employee |
-| **Shifts** | Master data: timing, grace/late/early-out rules, minimum/half-day/full-day minutes, OT rules, night-shift flag. Feeds the Shift dropdown on Employee |
+| **Departments** | Two tabs. **Payroll Departments**: name, OT allowed, min/max OT time, required work hours per day (drives attendance calculation; feeds the *Payroll Department* dropdown on Employee). **Departments**: a simple name list of the organisational departments (feeds the *Department* dropdown on Employee) |
+| **Shifts** | Master data: timing, lunch, grace in/out, minimum/half-day/full-day minutes, OT-starts-after, night-shift flag. (Whether OT is allowed is set on the Payroll Department, not here.) Feeds the Shift dropdown on Employee |
+| **Shift Mapping** | Put an employee on a different shift for a date range (Start Date, End Date, Employee, Shift) — e.g. a General-shift employee covering a week of nights. Overlapping ranges for one employee are rejected. The Daily Attendance screen picks up the mapped shift for the date, otherwise the employee's own shift |
+| **Shift Calendar** | Teams-style month view: for each day, how many employees are on each shift (colour-coded). Click a day to see who; filter by Department |
 | **Daily Attendance Entry** | HR/Admin/SuperAdmin record each employee's day: shift, attendance type, and an unlimited number of In/Out punch pairs (add as many as actually happened — no fixed cap). Automatically calculates actual work, required work (from Department), calculated OT, and rounded OT (floor to nearest 30 minutes); Approved OT is editable with a required reason if it differs from the rounded value |
 | **Dashboard** | Headcount KPIs (total/active/contract, today's present count and approved OT), plus an **Attendance Explorer** — pick a month and browse either a company-wide summary or one employee's full day-by-day record |
 

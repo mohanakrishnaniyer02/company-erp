@@ -37,7 +37,7 @@ public class EmployeesController : ControllerBase
     public async Task<ActionResult<IEnumerable<EmployeeListItem>>> GetAll(
         [FromQuery] string? search, [FromQuery] string? type, [FromQuery] int? departmentId, [FromQuery] string? roleType)
     {
-        var query = _db.Employees.Include(e => e.Department).Include(e => e.LocationRef).Include(e => e.Shift).AsQueryable();
+        var query = _db.Employees.Include(e => e.Department).Include(e => e.OrgDepartment).Include(e => e.LocationRef).Include(e => e.Shift).AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(search))
             query = query.Where(e => e.FullName.ToLower().Contains(search.ToLower())
@@ -56,7 +56,8 @@ public class EmployeesController : ControllerBase
                 e.Department != null ? e.Department.DepartmentName : null,
                 e.Type, e.Status, e.LocationRef != null ? e.LocationRef.LocationName : null,
                 e.RoleType, e.ShiftId, e.Shift != null ? e.Shift.ShiftName : null,
-                e.PasswordHash != null))
+                e.PasswordHash != null,
+                e.OrgDepartment != null ? e.OrgDepartment.DepartmentName : null))
             .ToListAsync();
 
         return Ok(result);
@@ -67,7 +68,7 @@ public class EmployeesController : ControllerBase
     public async Task<ActionResult<Employee>> GetById(int id)
     {
         var emp = await _db.Employees
-            .Include(e => e.Department).Include(e => e.Company).Include(e => e.LocationRef).Include(e => e.Manager).Include(e => e.Shift)
+            .Include(e => e.Department).Include(e => e.OrgDepartment).Include(e => e.Company).Include(e => e.LocationRef).Include(e => e.Manager).Include(e => e.Shift)
             .Include(e => e.BankDetail)
             .Include(e => e.ProofDocuments)
             .Include(e => e.Addresses)
@@ -108,6 +109,7 @@ public class EmployeesController : ControllerBase
             FullName = req.FullName,
             Designation = req.Designation,
             DepartmentId = req.DepartmentId,
+            OrgDepartmentId = req.OrgDepartmentId,
             CompanyId = req.CompanyId,
             ManagerId = req.ManagerId,
             ShiftId = req.ShiftId,
@@ -173,6 +175,7 @@ public class EmployeesController : ControllerBase
         emp.FullName = req.FullName;
         emp.Designation = req.Designation;
         emp.DepartmentId = req.DepartmentId;
+        emp.OrgDepartmentId = req.OrgDepartmentId;
         emp.CompanyId = req.CompanyId;
         emp.ManagerId = req.ManagerId;
         emp.ShiftId = req.ShiftId;

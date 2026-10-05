@@ -10,6 +10,8 @@ public class AppDbContext : DbContext
     public DbSet<Company> Companies => Set<Company>();
     public DbSet<Location> Locations => Set<Location>();
     public DbSet<Department> Departments => Set<Department>();
+    public DbSet<OrgDepartment> OrgDepartments => Set<OrgDepartment>();
+    public DbSet<ShiftMapping> ShiftMappings => Set<ShiftMapping>();
     public DbSet<Employee> Employees => Set<Employee>();
     public DbSet<BankDetail> BankDetails => Set<BankDetail>();
     public DbSet<ProofDocument> ProofDocuments => Set<ProofDocument>();
@@ -42,6 +44,29 @@ public class AppDbContext : DbContext
             e.Property(x => x.LocationName).HasColumnName("location_name");
         });
 
+        modelBuilder.Entity<OrgDepartment>(e =>
+        {
+            e.ToTable("org_departments");
+            e.HasKey(x => x.OrgDepartmentId);
+            e.Property(x => x.OrgDepartmentId).HasColumnName("org_department_id");
+            e.Property(x => x.DepartmentName).HasColumnName("department_name");
+            e.HasIndex(x => x.DepartmentName).IsUnique();
+        });
+
+        modelBuilder.Entity<ShiftMapping>(e =>
+        {
+            e.ToTable("shift_mappings");
+            e.HasKey(x => x.ShiftMappingId);
+            e.Property(x => x.ShiftMappingId).HasColumnName("shift_mapping_id");
+            e.Property(x => x.EmployeeId).HasColumnName("employee_id");
+            e.Property(x => x.ShiftId).HasColumnName("shift_id");
+            e.Property(x => x.StartDate).HasColumnName("start_date");
+            e.Property(x => x.EndDate).HasColumnName("end_date");
+            e.Property(x => x.CreatedAt).HasColumnName("created_at");
+            e.HasOne(x => x.Employee).WithMany().HasForeignKey(x => x.EmployeeId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.Shift).WithMany().HasForeignKey(x => x.ShiftId);
+        });
+
         modelBuilder.Entity<Department>(e =>
         {
             e.ToTable("departments");
@@ -68,6 +93,7 @@ public class AppDbContext : DbContext
             e.Property(x => x.ManagerId).HasColumnName("manager_id");
             e.Property(x => x.ShiftId).HasColumnName("shift_id");
             e.Property(x => x.RoleType).HasColumnName("role_type");
+            e.Property(x => x.OrgDepartmentId).HasColumnName("org_department_id");
             e.Property(x => x.PasswordHash).HasColumnName("password_hash");
             e.Property(x => x.JwtToken).HasColumnName("jwt_token");
             e.Property(x => x.MustChangePassword).HasColumnName("must_change_password");
@@ -86,6 +112,7 @@ public class AppDbContext : DbContext
             e.HasIndex(x => x.EmpCode).IsUnique();
 
             e.HasOne(x => x.Department).WithMany().HasForeignKey(x => x.DepartmentId);
+            e.HasOne(x => x.OrgDepartment).WithMany().HasForeignKey(x => x.OrgDepartmentId);
             e.HasOne(x => x.Company).WithMany().HasForeignKey(x => x.CompanyId);
             e.HasOne(x => x.LocationRef).WithMany().HasForeignKey(x => x.LocationId);
             e.HasOne(x => x.Manager).WithMany().HasForeignKey(x => x.ManagerId);
@@ -161,12 +188,9 @@ public class AppDbContext : DbContext
             e.Property(x => x.LunchEndTime).HasColumnName("lunch_end_time");
             e.Property(x => x.GraceInMinutes).HasColumnName("grace_in_minutes");
             e.Property(x => x.GraceOutMinutes).HasColumnName("grace_out_minutes");
-            e.Property(x => x.LateAfterMinutes).HasColumnName("late_after_minutes");
-            e.Property(x => x.EarlyOutMinutes).HasColumnName("early_out_minutes");
             e.Property(x => x.MinimumWorkMinutes).HasColumnName("minimum_work_minutes");
             e.Property(x => x.HalfDayMinutes).HasColumnName("half_day_minutes");
             e.Property(x => x.FullDayMinutes).HasColumnName("full_day_minutes");
-            e.Property(x => x.OtAllowed).HasColumnName("ot_allowed");
             e.Property(x => x.OtStartAfterMinutes).HasColumnName("ot_start_after_minutes");
             e.Property(x => x.IsNightShift).HasColumnName("is_night_shift");
             e.Property(x => x.Status).HasColumnName("status");

@@ -86,12 +86,9 @@ public class ShiftsController : ControllerBase
         s.LunchEndTime = r.LunchEndTime;
         s.GraceInMinutes = r.GraceInMinutes;
         s.GraceOutMinutes = r.GraceOutMinutes;
-        s.LateAfterMinutes = r.LateAfterMinutes;
-        s.EarlyOutMinutes = r.EarlyOutMinutes;
         s.MinimumWorkMinutes = r.MinimumWorkMinutes;
         s.HalfDayMinutes = r.HalfDayMinutes;
         s.FullDayMinutes = r.FullDayMinutes;
-        s.OtAllowed = r.OtAllowed;
         s.OtStartAfterMinutes = r.OtStartAfterMinutes;
         s.IsNightShift = r.IsNightShift;
         s.Status = r.Status;

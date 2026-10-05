@@ -5,7 +5,7 @@ import Topbar from '../components/Topbar.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 
 const emptyForm = {
-  empCode: '', type: 'Regular', fullName: '', designation: '', departmentId: '', companyId: '', managerId: '',
+  empCode: '', type: 'Regular', fullName: '', designation: '', departmentId: '', orgDepartmentId: '', companyId: '', managerId: '',
   dateOfJoining: '', dateOfBirth: '', dateOfLeaving: '', leavingComments: '',
   locationId: '', email: '', phoneNumber: '', maritalStatus: '', roleType: 'User', shiftId: '', password: ''
 }
@@ -23,7 +23,7 @@ export default function EmployeeProfile({ mode }) {
   const [tab, setTab] = useState('basic')
   const [form, setForm] = useState(emptyForm)
   const [forbidden, setForbidden] = useState(false)
-  const [lookups, setLookups] = useState({ companies: [], departments: [], locations: [] })
+  const [lookups, setLookups] = useState({ companies: [], departments: [], orgDepartments: [], locations: [] })
   const [managerOptions, setManagerOptions] = useState([])
   const [shiftTemplates, setShiftTemplates] = useState([])
   const [bank, setBank] = useState({ bankName:'', accountNumber:'', ifscCode:'', branchName:'', esiNumber:'', panNumber:'' })
@@ -41,6 +41,7 @@ export default function EmployeeProfile({ mode }) {
   useEffect(() => {
     api.get('/lookups/companies').then(r => setLookups(l => ({...l, companies: r.data})))
     api.get('/lookups/departments').then(r => setLookups(l => ({...l, departments: r.data})))
+    api.get('/org-departments').then(r => setLookups(l => ({...l, orgDepartments: r.data})))
     api.get('/lookups/locations').then(r => setLookups(l => ({...l, locations: r.data})))
     api.get('/employees').then(r => setManagerOptions(r.data.filter(e => String(e.employeeId) !== id)))
     api.get('/shifts').then(r => setShiftTemplates(r.data))
@@ -58,7 +59,7 @@ export default function EmployeeProfile({ mode }) {
         setForm({
           empCode: e.empCode,
           type: e.type, fullName: e.fullName, designation: e.designation || '',
-          departmentId: e.departmentId || '', companyId: e.companyId || '', managerId: e.managerId || '',
+          departmentId: e.departmentId || '', orgDepartmentId: e.orgDepartmentId || '', companyId: e.companyId || '', managerId: e.managerId || '',
           shiftId: e.shiftId || '', roleType: e.roleType || 'User', password: '',
           dateOfJoining: e.dateOfJoining || '', dateOfBirth: e.dateOfBirth || '', dateOfLeaving: e.dateOfLeaving || '',
           leavingComments: e.leavingComments || '', locationId: e.locationId || '',
@@ -84,6 +85,7 @@ export default function EmployeeProfile({ mode }) {
     const payload = {
       ...form,
       departmentId: toIntOrNull(form.departmentId),
+      orgDepartmentId: toIntOrNull(form.orgDepartmentId),
       companyId: toIntOrNull(form.companyId),
       managerId: toIntOrNull(form.managerId),
       locationId: toIntOrNull(form.locationId),
@@ -216,6 +218,12 @@ export default function EmployeeProfile({ mode }) {
                 <div className="section-label">Role &amp; Reporting</div>
                 <div className="field"><label>Designation</label><input value={form.designation} onChange={e => set('designation', e.target.value)} /></div>
                 <div className="field"><label>Department</label>
+                  <select value={form.orgDepartmentId} onChange={e => set('orgDepartmentId', e.target.value)}>
+                    <option value="">Select…</option>
+                    {lookups.orgDepartments.map(d => <option key={d.orgDepartmentId} value={d.orgDepartmentId}>{d.departmentName}</option>)}
+                  </select>
+                </div>
+                <div className="field"><label>Payroll Department</label>
                   <select value={form.departmentId} onChange={e => set('departmentId', e.target.value)}>
                     <option value="">Select…</option>
                     {lookups.departments.map(d => <option key={d.departmentId} value={d.departmentId}>{d.departmentName}</option>)}

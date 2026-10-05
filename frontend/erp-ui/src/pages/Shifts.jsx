@@ -5,9 +5,9 @@ import Topbar from '../components/Topbar.jsx'
 const empty = {
   shiftCode:'', shiftName:'', startTime:'09:30', endTime:'18:30',
   lunchStartTime:'13:00', lunchEndTime:'13:30',
-  graceInMinutes:'10', graceOutMinutes:'10', lateAfterMinutes:'10', earlyOutMinutes:'10',
+  graceInMinutes:'10', graceOutMinutes:'10',
   minimumWorkMinutes:'240', halfDayMinutes:'240', fullDayMinutes:'480',
-  otAllowed:true, otStartAfterMinutes:'0', isNightShift:false, status:'Active'
+  otStartAfterMinutes:'0', isNightShift:false, status:'Active'
 }
 
 function mins(v){const n=Number(v||0); return `${Math.floor(n/60)}h ${n%60}m`}
@@ -28,15 +28,14 @@ export default function Shifts(){
     setForm({
       shiftCode:s.shiftCode,shiftName:s.shiftName,startTime:(s.startTime||'').slice(0,5),endTime:(s.endTime||'').slice(0,5),
       lunchStartTime:s.lunchStartTime?(s.lunchStartTime.slice(0,5)):'',lunchEndTime:s.lunchEndTime?(s.lunchEndTime.slice(0,5)):'',
-      graceInMinutes:s.graceInMinutes,graceOutMinutes:s.graceOutMinutes,lateAfterMinutes:s.lateAfterMinutes,earlyOutMinutes:s.earlyOutMinutes,
+      graceInMinutes:s.graceInMinutes,graceOutMinutes:s.graceOutMinutes,
       minimumWorkMinutes:s.minimumWorkMinutes,halfDayMinutes:s.halfDayMinutes,fullDayMinutes:s.fullDayMinutes,
-      otAllowed:s.otAllowed,otStartAfterMinutes:s.otStartAfterMinutes,isNightShift:s.isNightShift,status:s.status
+      otStartAfterMinutes:s.otStartAfterMinutes,isNightShift:s.isNightShift,status:s.status
     }); setError('');setSuccess('');setShowForm(true)
   }
   async function save(e){
     e.preventDefault();setError('');setSuccess('')
     const p={...form,graceInMinutes:Number(form.graceInMinutes),graceOutMinutes:Number(form.graceOutMinutes),
-      lateAfterMinutes:Number(form.lateAfterMinutes),earlyOutMinutes:Number(form.earlyOutMinutes),
       minimumWorkMinutes:Number(form.minimumWorkMinutes),halfDayMinutes:Number(form.halfDayMinutes),fullDayMinutes:Number(form.fullDayMinutes),
       otStartAfterMinutes:Number(form.otStartAfterMinutes), lunchStartTime:form.lunchStartTime||null,lunchEndTime:form.lunchEndTime||null}
     try{if(editingId)await api.put(`/shifts/${editingId}`,p);else await api.post('/shifts',p);setSuccess(editingId?'Shift updated.':'Shift created.');reset();load()}
@@ -76,12 +75,9 @@ export default function Shifts(){
               <div className="section-label">Rules</div>
               <div className="field"><label>Grace In (min)</label><input type="number" min="0" value={form.graceInMinutes} onChange={e=>set('graceInMinutes',e.target.value)}/></div>
               <div className="field"><label>Grace Out (min)</label><input type="number" min="0" value={form.graceOutMinutes} onChange={e=>set('graceOutMinutes',e.target.value)}/></div>
-              <div className="field"><label>Late After (min)</label><input type="number" min="0" value={form.lateAfterMinutes} onChange={e=>set('lateAfterMinutes',e.target.value)}/></div>
-              <div className="field"><label>Early Out (min)</label><input type="number" min="0" value={form.earlyOutMinutes} onChange={e=>set('earlyOutMinutes',e.target.value)}/></div>
               <div className="field"><label>Minimum Work (min)</label><input type="number" min="0" value={form.minimumWorkMinutes} onChange={e=>set('minimumWorkMinutes',e.target.value)}/></div>
               <div className="field"><label>Half Day (min)</label><input type="number" min="0" value={form.halfDayMinutes} onChange={e=>set('halfDayMinutes',e.target.value)}/></div>
               <div className="field"><label>Full Day (min)</label><input type="number" min="1" value={form.fullDayMinutes} onChange={e=>set('fullDayMinutes',e.target.value)}/></div>
-              <div className="field"><label>OT Allowed</label><select value={form.otAllowed?'Yes':'No'} onChange={e=>set('otAllowed',e.target.value==='Yes')}><option>Yes</option><option>No</option></select></div>
               <div className="field"><label>OT Start After (min)</label><input type="number" min="0" value={form.otStartAfterMinutes} onChange={e=>set('otStartAfterMinutes',e.target.value)}/></div>
               <div className="field"><label>Night Shift</label><select value={form.isNightShift?'Yes':'No'} onChange={e=>set('isNightShift',e.target.value==='Yes')}><option>No</option><option>Yes</option></select></div>
               <div className="field"><label>Status</label><select value={form.status} onChange={e=>set('status',e.target.value)}><option>Active</option><option>Inactive</option></select></div>
@@ -97,12 +93,12 @@ export default function Shifts(){
     )}
 
     <div className="table-card"><div className="table-scroll"><table className="emp-table">
-      <thead><tr><th>Code</th><th>Shift</th><th>Time</th><th>Lunch</th><th>Work</th><th>OT</th><th>Status</th><th></th></tr></thead>
+      <thead><tr><th>Code</th><th>Shift</th><th>Time</th><th>Lunch</th><th>Work</th><th>OT After</th><th>Status</th><th></th></tr></thead>
       <tbody>{items.map(s=><tr key={s.shiftId}>
         <td className="mono">{s.shiftCode}</td><td><b>{s.shiftName}</b><div className="meta">{s.isNightShift?'Night':'Day'}</div></td>
         <td>{(s.startTime||'').slice(0,5)} – {(s.endTime||'').slice(0,5)}</td>
         <td>{s.lunchStartTime?(s.lunchStartTime.slice(0,5)+' – '+(s.lunchEndTime||'').slice(0,5)):'—'}</td>
-        <td>{mins(s.fullDayMinutes)}</td><td>{s.otAllowed?'Allowed':'No'}</td>
+        <td>{mins(s.fullDayMinutes)}</td><td>{mins(s.otStartAfterMinutes)}</td>
         <td><span className={'badge '+(s.status==='Active'?'active':'inactive')}>{s.status}</span></td>
         <td><div className="row-actions"><button className="edit" onClick={()=>edit(s)}>✎</button><button className="del" onClick={()=>remove(s)}>🗑</button></div></td>
       </tr>)}{items.length===0&&<tr className="empty-row"><td colSpan="8">No shifts configured.</td></tr>}</tbody>

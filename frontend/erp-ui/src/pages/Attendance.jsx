@@ -60,7 +60,7 @@ export default function Attendance() {
   // ---- entry modal's own form state ----
   const [editingId,setEditingId] = useState(null)
   const [formEmployeeId,setFormEmployeeId] = useState(''), [formDepartmentFilter,setFormDepartmentFilter] = useState(''), [date,setDate] = useState(today)
-  const [shiftId,setShiftId] = useState(''), [attendanceStatusId,setAttendanceStatusId] = useState('')
+  const [shiftSource,setShiftSource] = useState(''), [shiftId,setShiftId] = useState(''), [attendanceStatusId,setAttendanceStatusId] = useState('')
   const [entryType,setEntryType] = useState('User'), [punches,setPunches] = useState(emptyPunches)
   const [calc,setCalc] = useState({actualWorkMinutes:0,requiredWorkMinutes:0,calculatedOtMinutes:0,roundedOtMinutes:0,approvedOtMinutes:0})
   const [approvedOt,setApprovedOt] = useState(''), [reason,setReason] = useState(''), [comments,setComments] = useState('')
@@ -101,15 +101,13 @@ export default function Attendance() {
     return s
   },[entries,employeeId])
   function resetForm(){
-    setEditingId(null); setFormEmployeeId(employeeId||''); setFormDepartmentFilter(departmentFilter||''); setDate(today); setShiftId(''); setEntryType('User')
+    setEditingId(null); setFormEmployeeId(employeeId||''); setFormDepartmentFilter(departmentFilter||''); setDate(today); setShiftId(''); setShiftSource(''); setEntryType('User')
     const present=statuses.find(x=>x.status==='PRESENT'); setAttendanceStatusId(present?String(present.attendanceStatusId):'')
     setPunches(emptyPunches); setApprovedOt(''); setReason(''); setComments('')
     setCalc({actualWorkMinutes:0,requiredWorkMinutes:0,calculatedOtMinutes:0,roundedOtMinutes:0,approvedOtMinutes:0})
   }
   function openAdd(){
     resetForm()
-    const emp = employees.find(e=>String(e.employeeId)===String(employeeId))
-    if (emp?.shiftId) setShiftId(String(emp.shiftId))
     setError(''); setSuccess(''); setShowEntryModal(true)
   }
   function openEdit(a){
@@ -128,10 +126,18 @@ export default function Attendance() {
   function closeModal(){ setShowEntryModal(false) }
 
   // Auto-fill the shift when picking an employee inside the modal (only for a brand-new entry).
+  // New entries: the shift is whatever applies to this employee on this date —
+  // a Shift Mapping covering the date if there is one, else their own shift.
   useEffect(()=>{
-    if(!formSelectedEmployee || editingId) return
-    if(formSelectedEmployee.shiftId) setShiftId(String(formSelectedEmployee.shiftId))
-  },[formSelectedEmployee])
+    if(!showEntryModal || editingId || !formEmployeeId || !date) return
+    let cancelled=false
+    api.get('/shift-mappings/resolve',{params:{employeeId:formEmployeeId,date}}).then(r=>{
+      if(cancelled) return
+      setShiftSource(r.data.source)
+      if(r.data.shiftId) setShiftId(String(r.data.shiftId))
+    }).catch(()=>{})
+    return()=>{cancelled=true}
+  },[showEntryModal,editingId,formEmployeeId,date])
 
   // Debounced live calculation as punches/shift change, same as before.
   useEffect(()=>{
@@ -294,6 +300,9 @@ export default function Attendance() {
                 <select value={shiftId} onChange={e=>setShiftId(e.target.value)}>
                   <option value="">Select shift…</option>{shifts.filter(s=>s.status==='Active').map(s=><option key={s.shiftId} value={s.shiftId}>{s.shiftName} — {s.shiftCode}</option>)}
                 </select>
+                {shiftSource==='Mapped' && <small className="field-help" style={{color:'var(--blue-700)', fontWeight:600}}>Mapped shift for this date</small>}
+                {shiftSource==='Default' && <small className="field-help">Employee's default shift</small>}
+                {shiftSource==='None' && <small className="field-help">No shift allocated to this employee — pick one</small>}
               </div>
               <div className="field"><label>Attendance Type *</label>
                 <select value={attendanceStatusId} onChange={e=>setAttendanceStatusId(e.target.value)}>

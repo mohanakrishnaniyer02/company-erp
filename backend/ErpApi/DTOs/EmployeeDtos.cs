@@ -3,11 +3,11 @@ namespace ErpApi.DTOs;
 public record EmployeeListItem(
     int EmployeeId, string EmpCode, string FullName, string? Designation,
     string? Department, string Type, string Status, string? Location, string RoleType, int? ShiftId, string? ShiftName,
-    bool HasLogin);
+    bool HasLogin, string? OrgDepartment = null);
 
 public record EmployeeUpsertRequest(
     string EmpCode, string Type, string FullName, string? Designation,
-    int? DepartmentId, int? CompanyId, int? ManagerId, int? ShiftId, string? RoleType, string? Password,
+    int? DepartmentId, int? OrgDepartmentId, int? CompanyId, int? ManagerId, int? ShiftId, string? RoleType, string? Password,
     DateOnly? DateOfJoining, DateOnly? DateOfBirth, DateOnly? DateOfLeaving, string? LeavingComments,
     int? LocationId, string? Email, string? PhoneNumber, string? PhotoUrl, string? MaritalStatus);
 
@@ -26,9 +26,19 @@ public record EducationRequest(string? InstitutionName, string? Degree, DateOnly
 public record ShiftTemplateRequest(
     string ShiftCode, string ShiftName, TimeOnly StartTime, TimeOnly EndTime,
     TimeOnly? LunchStartTime, TimeOnly? LunchEndTime,
-    int GraceInMinutes, int GraceOutMinutes, int LateAfterMinutes, int EarlyOutMinutes,
+    int GraceInMinutes, int GraceOutMinutes,
     int MinimumWorkMinutes, int HalfDayMinutes, int FullDayMinutes,
-    bool OtAllowed, int OtStartAfterMinutes, bool IsNightShift, string Status);
+    int OtStartAfterMinutes, bool IsNightShift, string Status);
+
+public record OrgDepartmentRequest(string DepartmentName);
+
+public record ShiftMappingRequest(int EmployeeId, int ShiftId, DateOnly StartDate, DateOnly EndDate);
+
+public record ShiftMappingItem(
+    int ShiftMappingId, int EmployeeId, string EmployeeName, string EmpCode,
+    int ShiftId, string ShiftName, string ShiftCode, DateOnly StartDate, DateOnly EndDate);
+
+public record ResolvedShift(int? ShiftId, string? ShiftName, string Source);
 
 public record DepartmentRequest(
     string DepartmentName, bool OtAllowed, int? MinOtMinutes, int? MaxOtMinutes, int RequiredWorkMinutes);

@@ -89,11 +89,11 @@ export default function EmployeeList() {
         <div className="table-scroll">
           <table className="emp-table">
             <thead>
-              <tr><th>Employee</th><th>Designation</th><th>Department</th><th>Shift</th><th>Role</th><th>Type</th><th>Status</th><th>Location</th><th></th></tr>
+              <tr><th>Employee</th><th>Designation</th><th>Department</th><th>Payroll Dept</th><th>Shift</th><th>Role</th><th>Type</th><th>Status</th><th>Location</th><th></th></tr>
             </thead>
             <tbody>
               {employees.length === 0 ? (
-                <tr className="empty-row"><td colSpan="9">No employees match this filter.</td></tr>
+                <tr className="empty-row"><td colSpan="10">No employees match this filter.</td></tr>
               ) : employees.map(e => {
                 const editable = canManage(user?.role, e.roleType)
                 return (
@@ -108,7 +108,8 @@ export default function EmployeeList() {
                     </div>
                   </td>
                   <td>{e.designation}</td>
-                  <td>{e.department}</td>
+                  <td>{e.orgDepartment || '—'}</td>
+                  <td>{e.department || '—'}</td>
                   <td>{e.shiftName || '—'}</td>
                   <td><span className="badge regular">{e.roleType}</span></td>
                   <td><span className={'badge ' + e.type.toLowerCase()}>{e.type}</span></td>

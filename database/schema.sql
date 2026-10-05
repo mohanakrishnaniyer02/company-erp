@@ -2,6 +2,7 @@
 -- Company HR / ERP — PostgreSQL schema
 -- ============================================================
 
+DROP TABLE IF EXISTS shift_mappings CASCADE;
 DROP TABLE IF EXISTS attendance_punches CASCADE;
 DROP TABLE IF EXISTS attendance_entries CASCADE;
 DROP TABLE IF EXISTS ot_rounding_rules CASCADE;
@@ -14,6 +15,7 @@ DROP TABLE IF EXISTS employee_proof CASCADE;
 DROP TABLE IF EXISTS employee_bank_details CASCADE;
 DROP TABLE IF EXISTS employees CASCADE;
 DROP TABLE IF EXISTS departments CASCADE;
+DROP TABLE IF EXISTS org_departments CASCADE;
 DROP TABLE IF EXISTS locations CASCADE;
 DROP TABLE IF EXISTS companies CASCADE;
 DROP TABLE IF EXISTS users CASCADE;
@@ -45,6 +47,13 @@ CREATE TABLE departments (
     CHECK (NOT ot_allowed OR (min_ot_minutes IS NOT NULL AND max_ot_minutes IS NOT NULL AND min_ot_minutes <= max_ot_minutes))
 );
 
+-- Organisational departments (name only). Not to be confused with `departments`
+-- above, which are the *payroll* departments carrying OT policy / required hours.
+CREATE TABLE org_departments (
+    org_department_id   SERIAL PRIMARY KEY,
+    department_name     VARCHAR(100) NOT NULL UNIQUE
+);
+
 CREATE TABLE shift_templates (
     shift_id                SERIAL PRIMARY KEY,
     shift_code              VARCHAR(30) NOT NULL UNIQUE,
@@ -55,12 +64,9 @@ CREATE TABLE shift_templates (
     lunch_end_time          TIME,
     grace_in_minutes        INT NOT NULL DEFAULT 0,
     grace_out_minutes       INT NOT NULL DEFAULT 0,
-    late_after_minutes      INT NOT NULL DEFAULT 0,
-    early_out_minutes       INT NOT NULL DEFAULT 0,
     minimum_work_minutes    INT NOT NULL DEFAULT 0,
     half_day_minutes        INT NOT NULL DEFAULT 240,
     full_day_minutes        INT NOT NULL DEFAULT 480,
-    ot_allowed              BOOLEAN NOT NULL DEFAULT TRUE,
     ot_start_after_minutes  INT NOT NULL DEFAULT 0,
     is_night_shift          BOOLEAN NOT NULL DEFAULT FALSE,
     status                  VARCHAR(20) NOT NULL DEFAULT 'Active'
@@ -74,7 +80,8 @@ CREATE TABLE employees (
                       CHECK (type IN ('Regular','Contract')),
     full_name         VARCHAR(150) NOT NULL,
     designation       VARCHAR(150),
-    department_id     INT REFERENCES departments(department_id),
+    department_id     INT REFERENCES departments(department_id),   -- payroll department
+    org_department_id INT REFERENCES org_departments(org_department_id),
     company_id        INT REFERENCES companies(company_id),
     manager_id        INT REFERENCES employees(employee_id),
     shift_id          INT REFERENCES shift_templates(shift_id),
@@ -150,6 +157,20 @@ CREATE TABLE employee_shift_assignment (
     effective_from  DATE NOT NULL DEFAULT CURRENT_DATE,
     UNIQUE(employee_id, effective_from)
 );
+
+-- Date-ranged shift overrides: an employee works `shift_id` from start_date to
+-- end_date inclusive; outside any mapping their own employees.shift_id applies.
+-- (Overlap per employee is rejected by the API.)
+CREATE TABLE shift_mappings (
+    shift_mapping_id  SERIAL PRIMARY KEY,
+    employee_id       INT NOT NULL REFERENCES employees(employee_id) ON DELETE CASCADE,
+    shift_id          INT NOT NULL REFERENCES shift_templates(shift_id),
+    start_date        DATE NOT NULL,
+    end_date          DATE NOT NULL,
+    created_at        TIMESTAMP NOT NULL DEFAULT now(),
+    CHECK (end_date >= start_date)
+);
+CREATE INDEX idx_shift_mappings_employee_dates ON shift_mappings (employee_id, start_date, end_date);
 
 CREATE TABLE attendance_statuses (
     attendance_status_id SERIAL PRIMARY KEY,
@@ -228,12 +249,15 @@ INSERT INTO departments (department_name, ot_allowed, min_ot_minutes, max_ot_min
 
 INSERT INTO shift_templates
 (shift_code, shift_name, shift_start_time, shift_end_time, lunch_start_time, lunch_end_time,
- grace_in_minutes, grace_out_minutes, late_after_minutes, early_out_minutes,
- minimum_work_minutes, half_day_minutes, full_day_minutes, ot_allowed,
+ grace_in_minutes, grace_out_minutes,
+ minimum_work_minutes, half_day_minutes, full_day_minutes,
  ot_start_after_minutes, is_night_shift, status)
 VALUES
-('DAY', 'Day Shift', '09:30','18:30','13:00','13:30',10,10,10,10,240,240,480,TRUE,0,FALSE,'Active'),
-('NIGHT', 'Night Shift', '21:30','06:30','01:30','02:00',10,10,10,10,240,240,480,TRUE,0,TRUE,'Active');
+('DAY', 'Day Shift', '09:30','18:30','13:00','13:30',10,10,240,240,480,0,FALSE,'Active'),
+('NIGHT', 'Night Shift', '21:30','06:30','01:30','02:00',10,10,240,240,480,0,TRUE,'Active');
+
+INSERT INTO org_departments (department_name) VALUES
+ ('Technology'), ('Product & Design'), ('Finance & Accounts'), ('People & Culture'), ('Quality & Operations');
 
 INSERT INTO attendance_statuses (status, attendance_units, meaning) VALUES
 ('PRESENT', 1.00, 'Full day'),
@@ -282,6 +306,21 @@ VALUES
  'divya.sharma@company.com','+91 9800000036',3,'Active'),
 ('EMP-0008','Contract','Vikram Singh','QA Engineer',2,2,2,'User',
  'vikram.singh@company.com','+91 9800000037',1,'Active');
+
+UPDATE employees SET org_department_id = (SELECT org_department_id FROM org_departments WHERE department_name = 'People & Culture')    WHERE emp_code = 'EMP-0002';
+UPDATE employees SET org_department_id = (SELECT org_department_id FROM org_departments WHERE department_name = 'Technology')           WHERE emp_code = 'EMP-0003';
+UPDATE employees SET org_department_id = (SELECT org_department_id FROM org_departments WHERE department_name = 'Product & Design')     WHERE emp_code IN ('EMP-0004','EMP-0006');
+UPDATE employees SET org_department_id = (SELECT org_department_id FROM org_departments WHERE department_name = 'Finance & Accounts')   WHERE emp_code IN ('EMP-0005','EMP-0007');
+UPDATE employees SET org_department_id = (SELECT org_department_id FROM org_departments WHERE department_name = 'Quality & Operations') WHERE emp_code = 'EMP-0008';
+
+-- Demo shift mappings so the Shift Calendar has something to show: two Day-shift
+-- employees covering a week of nights each.
+INSERT INTO shift_mappings (employee_id, shift_id, start_date, end_date)
+SELECT e.employee_id, s.shift_id, DATE '2026-10-05', DATE '2026-10-11'
+FROM employees e, shift_templates s WHERE e.emp_code = 'EMP-0004' AND s.shift_code = 'NIGHT';
+INSERT INTO shift_mappings (employee_id, shift_id, start_date, end_date)
+SELECT e.employee_id, s.shift_id, DATE '2026-10-12', DATE '2026-10-18'
+FROM employees e, shift_templates s WHERE e.emp_code = 'EMP-0006' AND s.shift_code = 'NIGHT';
 
 -- A little more depth on two profiles, so the Bank Details / Proof / Address
 -- / Education tabs aren't empty in a demo either.

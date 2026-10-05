@@ -6,6 +6,8 @@ import EmployeeList from './pages/EmployeeList.jsx'
 import EmployeeProfile from './pages/EmployeeProfile.jsx'
 import Departments from './pages/Departments.jsx'
 import Shifts from './pages/Shifts.jsx'
+import ShiftMapping from './pages/ShiftMapping.jsx'
+import ShiftCalendar from './pages/ShiftCalendar.jsx'
 import Attendance from './pages/Attendance.jsx'
 import ProtectedRoute from './components/ProtectedRoute.jsx'
 import RequireRole from './components/RequireRole.jsx'
@@ -27,6 +29,8 @@ export default function App() {
           <Route element={<RequireRole roles={['HR','Admin','SuperAdmin']} />}>
             <Route path="/departments" element={<Departments />} />
             <Route path="/shifts" element={<Shifts />} />
+            <Route path="/shift-mapping" element={<ShiftMapping />} />
+            <Route path="/shift-calendar" element={<ShiftCalendar />} />
             <Route path="/attendance" element={<Attendance />} />
           </Route>
         </Route>

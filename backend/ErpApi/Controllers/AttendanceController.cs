@@ -225,9 +225,10 @@ public class AttendanceController : ControllerBase
         var rawOt = Math.Max(0, actual - required);
         var ot = rawOt;
 
+        // Whether OT is allowed at all comes from the Payroll Department's policy;
+        // the shift only contributes its "OT starts after" threshold.
         if (!employee.Department?.OtAllowed ?? false) ot = 0;
-        if (!shift.OtAllowed) ot = 0;
-        if (shift.OtAllowed && rawOt < shift.OtStartAfterMinutes) ot = 0;
+        if (rawOt < shift.OtStartAfterMinutes) ot = 0;
         if (employee.Department?.MinOtMinutes is int minOt && ot > 0 && ot < minOt) ot = 0;
         if (employee.Department?.MaxOtMinutes is int maxOt) ot = Math.Min(ot, maxOt);
 
