@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import api from '../api/client'
 import Topbar from '../components/Topbar.jsx'
+import useDepartmentNames from '../hooks/useDepartmentNames'
 
 const emptyPunches = [{in:'',out:''},{in:'',out:''}]
 const today = new Date().toISOString().slice(0,10)
@@ -48,7 +49,8 @@ function monthRange(monthStr) {
 
 export default function Attendance() {
   const [employees,setEmployees] = useState([]), [shifts,setShifts] = useState([]), [statuses,setStatuses] = useState([])
-  const [departments,setDepartments] = useState([]), [departmentFilter,setDepartmentFilter] = useState('')
+  const departments = useDepartmentNames()
+  const [departmentFilter,setDepartmentFilter] = useState('')
   const [month,setMonth] = useState(thisMonth), [employeeId,setEmployeeId] = useState('')
   const [entries,setEntries] = useState([]), [roundingRules,setRoundingRules] = useState([])
   const [ruleForm,setRuleForm] = useState({fromMinutes:0,toMinutes:29,roundedMinutes:0})
@@ -68,9 +70,9 @@ export default function Attendance() {
 
   useEffect(() => {
     Promise.all([
-      api.get('/employees'), api.get('/shifts'), api.get('/attendance/statuses'), api.get('/attendance/rounding-rules'), api.get('/departments')
-    ]).then(([e,s,a,r,d]) => {
-      setEmployees(e.data); setShifts(s.data); setStatuses(a.data); setRoundingRules(r.data); setDepartments(d.data)
+      api.get('/employees'), api.get('/shifts'), api.get('/attendance/statuses'), api.get('/attendance/rounding-rules')
+    ]).then(([e,s,a,r]) => {
+      setEmployees(e.data); setShifts(s.data); setStatuses(a.data); setRoundingRules(r.data)
       const present=a.data.find(x=>x.status==='PRESENT'); if(present) setAttendanceStatusId(String(present.attendanceStatusId))
     }).catch(()=>setError('Could not load attendance masters.'))
   },[])
@@ -114,7 +116,7 @@ export default function Attendance() {
   function openEdit(a){
     setEditingId(a.attendanceId); setFormEmployeeId(String(a.employeeId))
     const emp = employees.find(e=>e.employeeId===a.employeeId)
-    setFormDepartmentFilter(emp?.department||''); setDate(a.attendanceDate)
+    setFormDepartmentFilter(emp?.orgDepartment||''); setDate(a.attendanceDate)
     setShiftId(String(a.shiftId))
     const st = statuses.find(x=>x.status===a.attendanceType); setAttendanceStatusId(st?String(st.attendanceStatusId):'')
     setEntryType(a.entryType)
@@ -218,13 +220,13 @@ export default function Attendance() {
         <div className="field"><label>Department</label>
           <select value={departmentFilter} onChange={e=>{setDepartmentFilter(e.target.value); setEmployeeId('')}}>
             <option value="">All Departments</option>
-            {departments.map(d=><option key={d.departmentId} value={d.departmentName}>{d.departmentName}</option>)}
+            {departments.map(d=><option key={d} value={d}>{d}</option>)}
           </select>
         </div>
         <div className="field"><label>Employee</label>
           <select value={employeeId} onChange={e=>setEmployeeId(e.target.value)}>
             <option value="">All Employees</option>
-            {employees.filter(e=>!departmentFilter || e.department===departmentFilter).map(e=><option key={e.employeeId} value={e.employeeId}>{e.fullName} — {e.empCode}</option>)}
+            {employees.filter(e=>!departmentFilter || e.orgDepartment===departmentFilter).map(e=><option key={e.employeeId} value={e.employeeId}>{e.fullName} — {e.empCode}</option>)}
           </select>
         </div>
         {viewSelectedEmployee && <div className="field"><label>Employee ID</label><input className="mono" value={viewSelectedEmployee.empCode} disabled/></div>}
@@ -293,13 +295,13 @@ export default function Attendance() {
               <div className="field"><label>Department</label>
                 <select value={formDepartmentFilter} onChange={e=>{setFormDepartmentFilter(e.target.value); setFormEmployeeId('')}} disabled={!!editingId}>
                   <option value="">All Departments</option>
-                  {departments.map(d=><option key={d.departmentId} value={d.departmentName}>{d.departmentName}</option>)}
+                  {departments.map(d=><option key={d} value={d}>{d}</option>)}
                 </select>
               </div>
               <div className="field"><label>Employee *</label>
                 <select value={formEmployeeId} onChange={e=>setFormEmployeeId(e.target.value)} disabled={!!editingId}>
                   <option value="">Select employee…</option>
-                  {employees.filter(e=>e.status==='Active' && (!formDepartmentFilter || e.department===formDepartmentFilter)).map(e=><option key={e.employeeId} value={e.employeeId}>{e.fullName} — {e.empCode}</option>)}
+                  {employees.filter(e=>e.status==='Active' && (!formDepartmentFilter || e.orgDepartment===formDepartmentFilter)).map(e=><option key={e.employeeId} value={e.employeeId}>{e.fullName} — {e.empCode}</option>)}
                 </select>
               </div>
               <div className="field"><label>Employee ID</label><input className="mono" value={formSelectedEmployee?.empCode||''} disabled/></div>

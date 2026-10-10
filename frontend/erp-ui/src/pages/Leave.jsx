@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import api from '../api/client'
 import Topbar from '../components/Topbar.jsx'
+import useDepartmentNames from '../hooks/useDepartmentNames'
 import { useAuth } from '../context/AuthContext.jsx'
 
 const localISO = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
@@ -69,7 +70,7 @@ export default function Leave() {
 
   useEffect(() => { api.get('/employees').then(r => setEmployees(r.data)).catch(() => setError('Could not load employees.')) }, [])
 
-  const departments = useMemo(() => [...new Set(employees.map(e => e.orgDepartment).filter(Boolean))].sort(), [employees])
+  const departments = useDepartmentNames()
   const employee = employees.find(e => String(e.employeeId) === String(employeeId))
   const month = date.slice(0, 7), year = date.slice(0, 4)
 

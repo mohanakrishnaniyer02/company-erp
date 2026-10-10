@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import api from '../api/client'
 import Topbar from '../components/Topbar.jsx'
+import useDepartmentNames from '../hooks/useDepartmentNames'
 
 const todayStr = () => {
   const d = new Date()
@@ -38,7 +39,7 @@ export default function ShiftMapping() {
     api.get('/shifts').then(r => setShifts(r.data)).catch(() => {})
   }, [])
 
-  const departments = useMemo(() => [...new Set(employees.map(e => e.orgDepartment).filter(Boolean))].sort(), [employees])
+  const departments = useDepartmentNames()
   const formEmployee = employees.find(e => String(e.employeeId) === String(form.employeeId))
   const set = (f, v) => setForm(x => ({ ...x, [f]: v }))
   const today = todayStr()
@@ -147,7 +148,6 @@ export default function ShiftMapping() {
                       .map(e => <option key={e.employeeId} value={e.employeeId}>{e.fullName} — {e.empCode}</option>)}
                   </select>
                 </div>
-                <div className="field"><label>Employee ID</label><input className="mono" value={formEmployee?.empCode || ''} disabled /></div>
                 <div className="field"><label>Shift *</label>
                   <select required value={form.shiftId} onChange={e => set('shiftId', e.target.value)}>
                     <option value="">Select shift…</option>
