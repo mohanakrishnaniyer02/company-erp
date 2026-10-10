@@ -1,12 +1,15 @@
 # Company HR — ERP System (React + .NET + PostgreSQL)
 
 An internal HR / attendance / payroll-support system: employee records,
-department and shift masters, daily attendance entry with automatic OT
-calculation, and a role-based dashboard.
+department and shift masters, shift mapping, leave, attendance (manual or fetched
+from a biometric machine) with automatic OT calculation and configurable
+late-in / early-out rules, approvals, and a role-based dashboard.
 
 ```
 erp-system/
-├── database/schema.sql     ← the only database setup you need
+├── database/schema.sql     ← fresh-install database setup (drops everything first!)
+├── database/upgrades/      ← scripts + guide to update an EXISTING database
+├── database/sample-data.sql← optional example data (safe to re-run)
 ├── backend/ErpApi/         ← ASP.NET Core 8 Web API
 └── frontend/erp-ui/        ← React (Vite)
 ```
@@ -34,9 +37,15 @@ Add more real people through the app itself once you're in. A couple of demo Shi
 some recorded leave, and a few pending overtime entries are seeded too so the Shift Calendar, Leave and
 Approvals screens have something to show.
 
+`schema.sql` also ends with **example data** (late-in/early-out attendance, biometric punches,
+pending approvals, leave, a rule ladder) so every screen has something to show. To load the same
+examples into an existing database, run `database/sample-data.sql` once — it only fills blanks and
+can be re-run safely.
+
 **Already have a database with data?** Don't run `schema.sql` — it starts by dropping every
-table. Run the matching script(s) in [`database/upgrades/`](./database/upgrades/) instead
-(each is safe to run more than once and keeps your data).
+table. Follow [Updating an existing copy](#7-updating-an-existing-copy-after-pulling-from-git)
+below (the scripts in [`database/upgrades/`](./database/upgrades/) keep your data and are safe to
+run more than once).
 
 ## 2. Backend (.NET 8 Web API)
 
@@ -64,6 +73,33 @@ dotnet run
 Listens on `http://localhost:5205` by default (see
 `Properties/launchSettings.json`). Swagger UI is at
 `http://localhost:5205/swagger`.
+
+### Biometric settings (attendance fetched from the machine)
+
+The Attendance screen's **Entry Type = Biometric** reads the machine's punches. Where they come
+from is set in `appsettings.json`:
+
+```json
+"Biometric": {
+  "Source": "Local",
+  "DuplicateWindowSeconds": 60,
+  "SqlServer": {
+    "ConnectionString": "Server=...;Database=FAS_TIMESHEET;User Id=...;Password=...;Encrypt=False;TrustServerCertificate=True",
+    "Table": "dbo.Attendance_MachineData"
+  }
+}
+```
+
+| Setting | Meaning |
+|---|---|
+| `Source` = `Local` (default) | Punches come from this app's own `biometric_punches` table (the example data uses it). Nothing else needed. |
+| `Source` = `SqlServer` | Punches are read, **read-only**, from the machine database's `Attendance_MachineData` (`DeviceEmpID`, `AttendanceDate`, `DeviceCapuredTime`; rows with `Recstatus='A'`). Put the real connection string in **User Secrets** (key `Biometric:SqlServer:ConnectionString`), not in the committed file. For older SQL Server versions (2008 R2) keep `Encrypt=False;TrustServerCertificate=True`. |
+| `DuplicateWindowSeconds` | A scan within this many seconds of the previous kept scan is ignored (e.g. face and thumb both registering). Default 60. |
+
+Each employee must have their **Biometric Device ID** (their number on the machine) set on the
+Employee form, otherwise nothing can be matched to them. Captures alternate In, Out, In, Out…; an
+odd number of captures leaves the last Out empty and the form warns you. The code that writes
+punches from the device into SQL Server is separate from this app — the app only reads.
 
 ## 3. Frontend (React + Vite)
 
@@ -147,3 +183,37 @@ Delete is a **soft delete** by default — sets the employee `Inactive` and
 stamps a leaving date, doesn't remove the row (HR systems need to retain
 historical records). A hard delete exists (`DELETE /api/employees/{id}?hard=true`)
 but is restricted to SuperAdmin only.
+
+## 7. Updating an existing copy (after pulling from git)
+
+For anyone who already runs an earlier copy of this project and just pulled/extracted the newest
+version. Details and per-script notes: [`database/upgrades/README.md`](./database/upgrades/README.md).
+
+1. **Back up the database.** pgAdmin: right-click the database → **Backup…**. Or by SQL — open a
+   Query Tool on the **postgres** database (not `company_erp`), and run these **one at a time**
+   with the app stopped:
+   ```sql
+   SELECT pg_terminate_backend(pid) FROM pg_stat_activity
+   WHERE datname = 'company_erp' AND pid <> pg_backend_pid();
+   ```
+   ```sql
+   CREATE DATABASE company_erp_backup_YYYYMMDD TEMPLATE company_erp;
+   ```
+2. **Stop** the backend (Visual Studio) and the frontend dev server.
+3. **Get the new files**: `git pull` (or extract the zip over the folder). Your User Secrets
+   (JWT key, connection string) live outside the project and are untouched.
+4. **Run the upgrade scripts in order** on `company_erp` (pgAdmin → Query Tool → open file → F5).
+   Each is safe to repeat, so if unsure which you already ran, run all five:
+   `2026-10-batch1-…`, `batch2-leave`, `batch3-approvals`, `batch4-attendance-rules`, `batch5-biometric`.
+   **Never run `schema.sql`** on a database you want to keep.
+5. *(Optional)* run `database/sample-data.sql` once for example entries.
+6. **Backend:** Visual Studio → **Build → Rebuild Solution** (this restores the new
+   `Microsoft.Data.SqlClient` package) → F5. Add the `Biometric` section to your own
+   `appsettings.json` if it is missing (see section 2).
+7. **Frontend:** VS Code → run **Install Dependencies** (harmless if unchanged) and **Start Dev
+   Server**; hard-refresh the browser (**Ctrl + F5**).
+8. Log in (Employee ID + password unchanged) and set each employee's **Biometric Device ID**.
+9. As Admin/SuperAdmin, review **Attendance Rules**; employees need a Department for rules to apply.
+
+Good to know: existing attendance rows show 0 late/early minutes until re-saved; Loss-of-Pay and
+warnings from the rules are recorded in the rule log and do not change an attendance status.

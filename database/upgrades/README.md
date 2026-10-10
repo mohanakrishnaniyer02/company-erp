@@ -23,6 +23,12 @@ the table's order. Every script is safe to run more than once.)
 
 1. **Back up first.** In pgAdmin: right-click your database → **Backup…** → give it a file name →
    **Backup**. If anything surprises you, that file gets you back.
+   *Alternative, in SQL:* open a Query Tool on the **postgres** database (not your app database), with
+   the app stopped, and run these **one statement at a time**:
+   `SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname='company_erp' AND pid <> pg_backend_pid();`
+   then `CREATE DATABASE company_erp_backup_YYYYMMDD TEMPLATE company_erp;`
+   To go back: terminate connections again, `DROP DATABASE company_erp;`, then
+   `CREATE DATABASE company_erp TEMPLATE company_erp_backup_YYYYMMDD;`.
 2. **Stop the running app** (the backend in Visual Studio and the frontend dev server).
 3. **Run the upgrade scripts, oldest first.** In pgAdmin: select your database → **Tools → Query
    Tool** → open the first script (folder icon, or paste its contents) → press **F5**. Wait for
@@ -31,7 +37,9 @@ the table's order. Every script is safe to run more than once.)
 5. **Backend:** open the solution in Visual Studio → **Build → Rebuild Solution** → press **F5**.
 6. **Frontend:** in VS Code run the **Start Dev Server** task, then hard-refresh the browser
    (**Ctrl + F5**).
-7. Log in (Employee ID + password, unchanged) and check the new screens.
+7. Log in (Employee ID + password, unchanged) and check the new screens. If you will use the biometric
+   machine data, check the `Biometric` section of `appsettings.json` (README section 2) and set each
+   employee's **Biometric Device ID**.
 8. **Optional: example data.** If you want sample attendance, biometric punches, approvals and so on to look at,
    run `../sample-data.sql` once in the Query Tool (after the scripts above). It only fills in blanks and never
    overwrites your own entries, and running it twice changes nothing more. A fresh `schema.sql` install already

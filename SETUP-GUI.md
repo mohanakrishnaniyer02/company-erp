@@ -31,7 +31,8 @@ equivalent — but VS Code's one-click **Tasks** get you as close as possible).
    — you should see `employees`, `companies`, `departments`, etc. Expand any
    table → **View/Edit Data → All Rows** to confirm the seed data loaded.
 
-Database is ready. No terminal used.
+Database is ready. No terminal used. (The fresh schema also loads example data — attendance, biometric
+punches, approvals, leave — so the screens aren't empty.)
 
 ---
 
@@ -123,17 +124,42 @@ typing anything into a terminal.)*
 
 ## Step 4 — Try the whole thing
 
-1. In the browser: **Sign up** → fill the form → pick a role from the
-   dropdown → submit. You're logged in and land on the Dashboard.
-2. Click **Employees** in the sidebar → you should see the 5 seeded
-   employees in the table.
-3. Click **+ Add Employee**, fill in a name, click **Save Changes** → you're
-   back on the list with the new row, and the Dashboard KPI counts update.
-4. Click ✎ on a row to edit it, or 🗑 to deactivate it.
+1. In the browser, log in with Employee ID `SUPERADMIN-001` and password `ChangeMe123!`
+   (there is no signup page). You land on the Dashboard.
+2. **Employees** → the seeded employees are listed. **+ Add Employee** raises an approval request;
+   an Admin/SuperAdmin approves it under **Approvals → Employee Approvals**.
+3. **Attendance** → switch between **Day / Month / Range**, click a **Break** value to see the
+   break timeline, and use **Add Entry** (Entry Type *User* or *Biometric*).
+4. **Attendance Rules** (Admin/SuperAdmin) → the late-in / early-out ladders per Department.
+5. **Leave**, **Shift Mapping** and **Shift Calendar** each show example data.
 
 If a page shows a red error banner instead of data, it almost always means
 the frontend can't reach the API — double check the API is still running in
 Visual Studio (Step 2) and that the port in `.env` (Step 3) matches it.
+
+---
+
+## Optional — biometric machine data
+
+1. In Visual Studio open `appsettings.json` and find the **Biometric** section.
+2. For the demo leave **Source** as `Local`. For the real machine set it to `SqlServer`, and put the
+   connection string in **Manage User Secrets** as `"Biometric:SqlServer:ConnectionString": "Server=...;Database=FAS_TIMESHEET;User Id=...;Password=...;Encrypt=False;TrustServerCertificate=True"`.
+3. In the app: **Employees → edit** → fill **Biometric Device ID** with the employee's number on the machine.
+4. **Attendance → Add Entry → Entry Type = Biometric**, pick employee and date, and the punches fill in.
+   Save when happy. Scans closer together than `DuplicateWindowSeconds` (default 60) count once.
+
+---
+
+## Updating an existing copy (new version from git or a new zip)
+
+1. **Back up**: pgAdmin → right-click the database → **Backup…** (or the SQL copy method in the
+   main README, section 7).
+2. Stop the API (Visual Studio) and the dev server (VS Code).
+3. Pull/extract the new files over your folder.
+4. pgAdmin → select `company_erp` → **Query Tool** → open each file in `database/upgrades/` in order
+   (batch1 → batch5) and press **F5**. Safe to repeat. **Never open `schema.sql` here.**
+5. Visual Studio → **Build → Rebuild Solution**, then **F5**.
+6. VS Code → **Terminal → Run Task… → Install Dependencies**, then **Start Dev Server**; press **Ctrl+F5** in the browser.
 
 ---
 
