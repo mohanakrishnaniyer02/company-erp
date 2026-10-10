@@ -16,6 +16,10 @@ public static class EmployeeProvisioner
         if (await db.Employees.AnyAsync(e => e.EmpCode == req.EmpCode))
             return (null, $"Employee ID '{req.EmpCode}' is already in use.");
 
+        var deviceId = string.IsNullOrWhiteSpace(req.BiometricDeviceEmpId) ? null : req.BiometricDeviceEmpId.Trim();
+        if (deviceId != null && await db.Employees.AnyAsync(e => e.BiometricDeviceEmpId == deviceId))
+            return (null, $"Biometric Device ID '{deviceId}' already belongs to another employee.");
+
         var roleType = string.IsNullOrWhiteSpace(req.RoleType) ? "User" : req.RoleType!;
         var hasLogin = EmployeeRules.LoginRoles.Contains(roleType);
         if (hasLogin)
@@ -46,6 +50,7 @@ public static class EmployeeProvisioner
             Email = req.Email,
             PhoneNumber = req.PhoneNumber,
             PhotoUrl = req.PhotoUrl,
+            BiometricDeviceEmpId = deviceId,
             MaritalStatus = req.MaritalStatus,
             Status = req.DateOfLeaving.HasValue ? "Inactive" : "Active"
         };

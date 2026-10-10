@@ -42,8 +42,8 @@ export default function AppShell() {
           <NavLink to="/shift-calendar" className={({isActive}) => 'side-link' + (isActive ? ' active' : '')} title="Shift Calendar">
             <span className="ic">▦</span><span className="label">Shift Calendar</span>
           </NavLink>
-          <NavLink to="/attendance" className={({isActive}) => 'side-link' + (isActive ? ' active' : '')} title="Daily Attendance">
-            <span className="ic">✓</span><span className="label">Daily Attendance</span>
+          <NavLink to="/attendance" className={({isActive}) => 'side-link' + (isActive ? ' active' : '')} title="Attendance">
+            <span className="ic">✓</span><span className="label">Attendance</span>
           </NavLink>
           <NavLink to="/leave" className={({isActive}) => 'side-link' + (isActive ? ' active' : '')} title="Leave">
             <span className="ic">◐</span><span className="label">Leave</span>

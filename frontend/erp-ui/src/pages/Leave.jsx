@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import api from '../api/client'
 import Topbar from '../components/Topbar.jsx'
 import useDepartmentNames from '../hooks/useDepartmentNames'

@@ -7,7 +7,7 @@ import { useAuth } from '../context/AuthContext.jsx'
 const emptyForm = {
   empCode: '', type: 'Regular', fullName: '', designation: '', departmentId: '', orgDepartmentId: '', companyId: '', managerId: '',
   dateOfJoining: '', dateOfBirth: '', dateOfLeaving: '', leavingComments: '',
-  locationId: '', email: '', phoneNumber: '', maritalStatus: '', roleType: 'User', shiftId: '', password: ''
+  locationId: '', email: '', phoneNumber: '', maritalStatus: '', roleType: 'User', shiftId: '', password: '', biometricDeviceEmpId: ''
 }
 
 const LOGIN_ROLES = ['HR', 'Admin', 'SuperAdmin']
@@ -63,7 +63,7 @@ export default function EmployeeProfile({ mode }) {
           shiftId: e.shiftId || '', roleType: e.roleType || 'User', password: '',
           dateOfJoining: e.dateOfJoining || '', dateOfBirth: e.dateOfBirth || '', dateOfLeaving: e.dateOfLeaving || '',
           leavingComments: e.leavingComments || '', locationId: e.locationId || '',
-          email: e.email || '', phoneNumber: e.phoneNumber || '', maritalStatus: e.maritalStatus || ''
+          email: e.email || '', phoneNumber: e.phoneNumber || '', maritalStatus: e.maritalStatus || '', biometricDeviceEmpId: e.biometricDeviceEmpId || ''
         })
         if (e.bankDetail) setBank(e.bankDetail)
         setProofs(e.proofDocuments || [])
@@ -277,6 +277,10 @@ export default function EmployeeProfile({ mode }) {
                     <option value="">Select…</option>
                     {lookups.locations.map(l => <option key={l.locationId} value={l.locationId}>{l.locationName}</option>)}
                   </select>
+                </div>
+                <div className="field"><label>Biometric Device ID</label>
+                  <input className="mono" value={form.biometricDeviceEmpId} onChange={e => set('biometricDeviceEmpId', e.target.value)} placeholder="e.g. 1024" />
+                  <small className="field-help">This person's number on the biometric machine. Used to fetch their punches into Attendance. Must be unique.</small>
                 </div>
                 <div className="field"><label>Marital Status</label>
                   <select value={form.maritalStatus} onChange={e => set('maritalStatus', e.target.value)}>

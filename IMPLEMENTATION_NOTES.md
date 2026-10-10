@@ -26,7 +26,7 @@ Department. (Late-after and early-out were dropped; grace in/out covers them.)
 2. the employee's own shift (`employees.shift_id`, their first-allocated/default shift), else
 3. none.
 
-Mappings for the same employee may not overlap. The Daily Attendance modal resolves the
+Mappings for the same employee may not overlap. The Attendance modal resolves the
 shift this way when you pick an employee and date (and says whether it was mapped or the
 default); the Shift Calendar uses the same rule, restricted to days the employee has
 joined and not yet left.
@@ -127,6 +127,33 @@ Only Admin and SuperAdmin can see or use these (enforced in the API, not just th
   Leave balances stay derived. Loss of Pay and warnings are recorded in `attendance_rule_charges` only;
   attendance status is not changed automatically.
 
+## Attendance screen and biometric punches
+
+- **View**: Day / Month / Range, Department filter only (no employee filter). Columns: In Time (first In), Out Time
+  (last Out), Break, Work Hrs (counted), OT Hrs. Break = (last Out - first In) - minutes worked, so it covers both
+  the gaps between punch pairs and any lunch the shift deducts from a continuous punch. Clicking Break opens a
+  timeline of the punch pairs and each break, plus late/early, rules applied and the note. In Day view everyone active
+  in the Department with no entry appears as *Not entered*.
+- **Employee mapping**: `employees.biometric_device_emp_id` (Employee profile > Biometric Device ID) is the person's
+  number on the machine (the machine's `DeviceEmpID`). Unique across employees.
+- **Fetch** (`GET /api/biometric/punches?employeeId=&date=`): reads that day's capture times for the mapped ID,
+  removes duplicate scans, pairs what is left and returns it. Nothing is saved until HR presses Save Attendance, so
+  the times can still be corrected. New entries fetch automatically when Entry Type is Biometric; *Fetch from machine*
+  re-fetches (also when editing).
+- **Duplicates**: a capture within `Biometric:DuplicateWindowSeconds` (default 60) of the previous *kept* capture is
+  ignored (face + thumb, the same finger twice). Measured from the last kept capture, so slow repeats are not chained
+  together. Set to 0 to keep everything.
+- **Pairing**: the machine records only a time, not In or Out, so the captures alternate In, Out, In, Out. An odd
+  number leaves the last In without an Out; the form warns and the server refuses to save an In with no Out.
+- **Source** (`Biometric:Source` in `appsettings.json`): `Local` (default) reads the `biometric_punches` table in this
+  database; `SqlServer` reads the machine's own table directly (read-only):
+  `FAS_TIMESHEET.dbo.Attendance_MachineData(DeviceEmpID, AttendanceDate, DeviceCapuredTime, Recstatus ...)`, only rows
+  with `Recstatus = 'A'`, filtered by `AttendanceDate`. Set `Biometric:SqlServer:ConnectionString`. For an older SQL
+  Server such as 2008 R2, keep `Encrypt=False;TrustServerCertificate=True` in the connection string.
+- **The capture code** (device to SQL Server) is a separate program and does NOT go into this application. As long
+  as it keeps writing to the machine's table, `SqlServer` mode reads it. If it is easier for that program to write
+  into this application's database, point it at `biometric_punches` instead and use `Local`. This app only reads.
+
 ## Database
 
 - **New database:** run `database/schema.sql` only.
@@ -137,5 +164,5 @@ Only Admin and SuperAdmin can see or use these (enforced in the API, not just th
 ## API areas
 
 `/api/auth`, `/api/employees`, `/api/departments` (payroll), `/api/org-departments`,
-`/api/approvals` (+ `/summary`, `/employees`, `/overtime`), `/api/shifts`, `/api/shift-mappings` (+ `/resolve`, `/calendar`), `/api/attendance-rules` (+ `/preview`, `/applied/{id}`), `/api/leave` (+ `/types`, `/balances`, `/entries`, `/adjustments`), `/api/attendance`
+`/api/approvals` (+ `/summary`, `/employees`, `/overtime`), `/api/shifts`, `/api/shift-mappings` (+ `/resolve`, `/calendar`), `/api/biometric` (+ `/punches`), `/api/attendance-rules` (+ `/preview`, `/applied/{id}`), `/api/leave` (+ `/types`, `/balances`, `/entries`, `/adjustments`), `/api/attendance`
 (+ `/statuses`, `/rounding-rules`, `/calculate`), `/api/dashboard/stats`.

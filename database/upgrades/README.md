@@ -14,6 +14,7 @@ to keep: it starts by dropping every table.
 | `2026-10-batch2-leave.sql` | Leave policy (`leave_types`) and recorded leave (`leave_entries`) for the Leave screen. Run after batch 1 (the app expects both) |
 | `2026-10-batch3-approvals.sql` | Approval requests for employee add/delete, and OT-approval columns on attendance. Existing attendance is carried across as already decided. Run after batches 1 and 2 |
 | `2026-10-batch4-attendance-rules.sql` | Late/early minutes on attendance, the attendance-rule tables, and one example late-in ladder. Run after batches 1-3 |
+| `2026-10-batch5-biometric.sql` | `employees.biometric_device_emp_id` (the employee's number on the machine) and the `biometric_punches` table. Run after batches 1-4 |
 
 ## Step by step: bringing an existing database and app up to date
 
@@ -31,4 +32,8 @@ the table's order. Every script is safe to run more than once.)
 6. **Frontend:** in VS Code run the **Start Dev Server** task, then hard-refresh the browser
    (**Ctrl + F5**).
 7. Log in (Employee ID + password, unchanged) and check the new screens.
+8. **Optional: example data.** If you want sample attendance, biometric punches, approvals and so on to look at,
+   run `../sample-data.sql` once in the Query Tool (after the scripts above). It only fills in blanks and never
+   overwrites your own entries, and running it twice changes nothing more. A fresh `schema.sql` install already
+   includes it.
 

@@ -92,6 +92,13 @@ public class EmployeesController : ControllerBase
         if (await _db.ApprovalRequests.AnyAsync(r => r.Status == "PENDING" && r.RequestType == "EMPLOYEE_ADD" && r.SummaryCode == req.EmpCode))
             return Conflict(new { message = $"A request to add Employee ID '{req.EmpCode}' is already waiting for approval." });
 
+        var deviceId = NormalizeDeviceId(req.BiometricDeviceEmpId);
+        if (deviceId != null && await _db.Employees.AnyAsync(e => e.BiometricDeviceEmpId == deviceId))
+            return Conflict(new { message = $"Biometric Device ID '{deviceId}' already belongs to another employee." });
+        var deviceNeedle = "\"BiometricDeviceEmpId\":\"" + deviceId + "\"";
+        if (deviceId != null && await _db.ApprovalRequests.AnyAsync(r => r.Status == "PENDING" && r.RequestType == "EMPLOYEE_ADD" && r.Payload.Contains(deviceNeedle)))
+            return Conflict(new { message = $"Biometric Device ID '{deviceId}' is already on another request waiting for approval." });
+
         var roleType = string.IsNullOrWhiteSpace(req.RoleType) ? "User" : req.RoleType!;
         if (RoleRank.TryGetValue(roleType, out var newRoleRank) && newRoleRank > CallerRoleRank())
             return StatusCode(403, new { message = $"You don't have permission to create a {roleType} account." });
@@ -150,6 +157,10 @@ public class EmployeesController : ControllerBase
         if (req.DateOfLeaving.HasValue && emp.DateOfLeaving == null)
             return BadRequest(new { message = "Deactivating an employee needs approval — use Delete on the Employees list, and set the leaving details here afterwards." });
 
+        var deviceId = NormalizeDeviceId(req.BiometricDeviceEmpId);
+        if (deviceId != null && await _db.Employees.AnyAsync(e => e.BiometricDeviceEmpId == deviceId && e.EmployeeId != id))
+            return Conflict(new { message = $"Biometric Device ID '{deviceId}' already belongs to another employee." });
+
         var roleChanged = emp.RoleType != roleType;
 
         emp.Type = req.Type;
@@ -169,6 +180,7 @@ public class EmployeesController : ControllerBase
         emp.Email = req.Email;
         emp.PhoneNumber = req.PhoneNumber;
         emp.PhotoUrl = req.PhotoUrl;
+        emp.BiometricDeviceEmpId = deviceId;
         emp.MaritalStatus = req.MaritalStatus;
         emp.Status = req.DateOfLeaving.HasValue ? "Inactive" : "Active";
         emp.UpdatedAt = DateTime.UtcNow;
@@ -208,6 +220,8 @@ public class EmployeesController : ControllerBase
         await _db.SaveChangesAsync();
         return NoContent();
     }
+
+    private static string? NormalizeDeviceId(string? v) => string.IsNullOrWhiteSpace(v) ? null : v.Trim();
 
     private static string? ValidateLoginRequirements(string roleType, string? password, string? email, bool hasExistingLogin) =>
         EmployeeRules.ValidateLoginRequirements(roleType, password, email, hasExistingLogin);

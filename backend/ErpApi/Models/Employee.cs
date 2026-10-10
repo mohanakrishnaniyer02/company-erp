@@ -39,6 +39,7 @@ public class Employee
     public string? Email { get; set; }
     public string? PhoneNumber { get; set; }
     public string? PhotoUrl { get; set; }
+    public string? BiometricDeviceEmpId { get; set; }   // this person's number on the biometric machine (the machine's DeviceEmpID)
     public string? MaritalStatus { get; set; }          // Single | Married
     public string Status { get; set; } = "Active";      // Active | Inactive
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

@@ -79,7 +79,7 @@ export default function Dashboard() {
       <div className="card" style={{padding:'30px 32px 36px'}}>
         <div className="section-head-inline">
           <div><h3 style={{fontSize:18}}>Attendance Explorer</h3><p className="card-sub">Browse attendance by month, across everyone or one employee at a time</p></div>
-          <button type="button" className="btn-ghost" onClick={()=>navigate('/attendance')}>Open Daily Attendance →</button>
+          <button type="button" className="btn-ghost" onClick={()=>navigate('/attendance')}>Open Attendance →</button>
         </div>
         <div className="form-grid two" style={{marginBottom:22, maxWidth:640}}>
           <div className="field"><label>Month</label><input type="month" value={month} onChange={e=>setMonth(e.target.value)} /></div>

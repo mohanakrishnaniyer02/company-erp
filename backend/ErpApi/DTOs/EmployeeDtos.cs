@@ -10,7 +10,7 @@ public record EmployeeUpsertRequest(
     int? DepartmentId, int? OrgDepartmentId, int? CompanyId, int? ManagerId, int? ShiftId, string? RoleType, string? Password,
     DateOnly? DateOfJoining, DateOnly? DateOfBirth, DateOnly? DateOfLeaving, string? LeavingComments,
     int? LocationId, string? Email, string? PhoneNumber, string? PhotoUrl, string? MaritalStatus,
-    BankDetailRequest? Bank = null);
+    BankDetailRequest? Bank = null, string? BiometricDeviceEmpId = null);
 
 public record BankDetailRequest(
     string? BankName, string? AccountNumber, string? IfscCode,

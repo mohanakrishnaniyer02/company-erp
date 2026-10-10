@@ -26,6 +26,7 @@ public class AppDbContext : DbContext
     public DbSet<OtRoundingRule> OtRoundingRules => Set<OtRoundingRule>();
     public DbSet<AttendanceEntry> AttendanceEntries => Set<AttendanceEntry>();
     public DbSet<AttendancePunch> AttendancePunches => Set<AttendancePunch>();
+    public DbSet<BiometricPunch> BiometricPunches => Set<BiometricPunch>();
     public DbSet<AttendanceRuleSet> AttendanceRuleSets => Set<AttendanceRuleSet>();
     public DbSet<AttendanceRuleTier> AttendanceRuleTiers => Set<AttendanceRuleTier>();
     public DbSet<AttendanceRuleApplication> AttendanceRuleApplications => Set<AttendanceRuleApplication>();
@@ -150,6 +151,7 @@ public class AppDbContext : DbContext
             e.Property(x => x.ShiftId).HasColumnName("shift_id");
             e.Property(x => x.RoleType).HasColumnName("role_type");
             e.Property(x => x.OrgDepartmentId).HasColumnName("org_department_id");
+            e.Property(x => x.BiometricDeviceEmpId).HasColumnName("biometric_device_emp_id");
             e.Property(x => x.PasswordHash).HasColumnName("password_hash");
             e.Property(x => x.JwtToken).HasColumnName("jwt_token");
             e.Property(x => x.MustChangePassword).HasColumnName("must_change_password");
@@ -396,6 +398,19 @@ public class AppDbContext : DbContext
             e.Property(x => x.Note).HasColumnName("note");
             e.HasOne(x => x.Application).WithMany(x => x.Charges).HasForeignKey(x => x.ApplicationId).OnDelete(DeleteBehavior.Cascade);
             e.HasOne(x => x.LeaveEntry).WithMany().HasForeignKey(x => x.LeaveEntryId).OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<BiometricPunch>(e =>
+        {
+            e.ToTable("biometric_punches");
+            e.HasKey(x => x.PunchId);
+            e.Property(x => x.PunchId).HasColumnName("punch_id");
+            e.Property(x => x.DeviceOid).HasColumnName("device_oid");
+            e.Property(x => x.DeviceEmpId).HasColumnName("device_emp_id");
+            e.Property(x => x.AttendanceDate).HasColumnName("attendance_date");
+            e.Property(x => x.CapturedAt).HasColumnName("captured_at");
+            e.Property(x => x.CreatedAt).HasColumnName("created_at");
+            e.Property(x => x.RecStatus).HasColumnName("rec_status");
         });
     }
 }

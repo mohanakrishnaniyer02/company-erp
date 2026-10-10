@@ -258,3 +258,27 @@ a{cursor:pointer;}
 .icon-act.ok{color:var(--success);} .icon-act.ok:hover{background:var(--success-bg); border-color:var(--success);}
 .icon-act.no{color:var(--danger);} .icon-act.no:hover{background:var(--danger-bg); border-color:var(--danger);}
 .icon-act:disabled{opacity:.45; cursor:not-allowed;}
+
+/* ---- Attendance view ---- */
+.att-filters{display:flex; flex-wrap:wrap; gap:14px 18px; align-items:flex-end;}
+.att-filters .field{margin-bottom:0; min-width:170px;}
+.seg{display:inline-flex; border:1.5px solid var(--line); border-radius:9px; overflow:hidden; background:#fff;}
+.seg button{border:none; background:transparent; padding:9px 18px; font:inherit; font-size:13px; font-weight:600; color:var(--text-soft); cursor:pointer;}
+.seg button + button{border-left:1.5px solid var(--line);}
+.seg button.active{background:var(--blue-600); color:#fff;}
+.att-table td{vertical-align:top;}
+.att-break{border:1px solid var(--line); background:#fff; border-radius:8px; padding:4px 10px; font:inherit; font-size:12.5px; font-weight:600; color:var(--blue-700); cursor:pointer; white-space:nowrap;}
+.att-break:hover, .att-break[aria-expanded="true"]{background:var(--blue-100); border-color:var(--blue-500);}
+.att-flag{font-size:11.5px; font-weight:600; color:var(--amber);}
+.att-missing td{background:#FBFBFD;}
+.att-add{padding:5px 12px; font-size:12px;}
+.att-open > td{background:#F6F9FF;}
+.att-detail > td{background:#F6F9FF; padding:4px 18px 16px !important; border-top:none;}
+.att-timeline{display:flex; flex-wrap:wrap; gap:8px; align-items:stretch; margin-bottom:10px;}
+.att-seg{display:flex; flex-direction:column; gap:2px; padding:8px 12px; border-radius:9px; font-size:12.5px; border:1px solid var(--line); background:#fff;}
+.att-seg span{font-size:11.5px; color:var(--text-faint);}
+.att-seg.work{border-left:4px solid var(--blue-600);}
+.att-seg.brk{border-left:4px solid var(--amber); background:var(--amber-bg);}
+.att-notes{font-size:12.5px; color:var(--text-soft); line-height:1.7;}
+.bio-note{margin-top:14px; padding:12px 14px; border:1px solid var(--blue-500); background:#F6F9FF; border-radius:10px; font-size:12.5px; color:var(--text-soft);}
+.bio-note.bad{border-color:var(--danger); background:var(--danger-bg); color:var(--danger);}

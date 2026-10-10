@@ -47,6 +47,15 @@ builder.Services.AddAuthorization();
 builder.Services.AddSingleton<IJwtService, JwtService>();
 builder.Services.AddScoped<AttendanceRuleService>();
 
+// ---------- Biometric punches ----------
+// Biometric:Source = "Local" reads the biometric_punches table in this database;
+// "SqlServer" reads the machine's own SQL Server table (see appsettings.json).
+builder.Services.Configure<BiometricOptions>(builder.Configuration.GetSection("Biometric"));
+if (string.Equals(builder.Configuration["Biometric:Source"], "SqlServer", StringComparison.OrdinalIgnoreCase))
+    builder.Services.AddScoped<IBiometricPunchSource, SqlServerBiometricPunchSource>();
+else
+    builder.Services.AddScoped<IBiometricPunchSource, LocalBiometricPunchSource>();
+
 // ---------- CORS ----------
 var allowedOrigin = builder.Configuration["Cors:AllowedOrigin"] ?? "http://localhost:5173";
 builder.Services.AddCors(options =>
