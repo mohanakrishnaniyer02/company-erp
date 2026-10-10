@@ -15,7 +15,8 @@ namespace ErpApi.Controllers;
 public class AttendanceController : ControllerBase
 {
     private readonly AppDbContext _db;
-    public AttendanceController(AppDbContext db) => _db = db;
+    private readonly AttendanceRuleService _rules;
+    public AttendanceController(AppDbContext db, AttendanceRuleService rules) { _db = db; _rules = rules; }
 
     [HttpGet]
     public async Task<IActionResult> GetAll(
@@ -44,7 +45,9 @@ public class AttendanceController : ControllerBase
                 a.CalculatedOtMinutes, a.RoundedOtMinutes, a.ApprovedOtMinutes,
                 a.OtStatus, a.CountedWorkMinutes,
                 a.Comments,
-                a.Punches.OrderBy(p => p.SequenceNo).Select(p => new PunchPairDto(p.PunchIn, p.PunchOut)).ToList()))
+                a.Punches.OrderBy(p => p.SequenceNo).Select(p => new PunchPairDto(p.PunchIn, p.PunchOut)).ToList(),
+                a.LateInMinutes, a.EarlyOutMinutes,
+                _db.AttendanceRuleApplications.Any(r => r.AttendanceId == a.AttendanceId)))
             .ToListAsync();
 
         return Ok(result);
@@ -147,7 +150,21 @@ public class AttendanceController : ControllerBase
         existing.Comments = req.Comments;
         existing.UpdatedAt = DateTime.UtcNow;
 
-        await _db.SaveChangesAsync();
+        // Lateness is always recorded; deductions only happen when HR ticked "Apply attendance rules".
+        // Re-saving replaces whatever the rules did before on this entry, so unticking waives it.
+        var shift = (await _db.ShiftTemplates.FindAsync(req.ShiftId))!;
+        (existing.LateInMinutes, existing.EarlyOutMinutes) = AttendanceRuleService.Variance(shift, req.Punches);
+
+        await using var tx = await _db.Database.BeginTransactionAsync();
+        if (existing.AttendanceId != 0) await _rules.RevertAsync(existing.AttendanceId);
+        await _db.SaveChangesAsync(); // gives a new entry its id and releases reverted deductions
+        if (req.ApplyRules)
+        {
+            var evaluations = await _rules.EvaluateAsync(employee, shift, req.AttendanceDate, req.Punches, existing.AttendanceId);
+            await _rules.ApplyAsync(existing, evaluations, GetUserId());
+            await _db.SaveChangesAsync();
+        }
+        await tx.CommitAsync();
         return Ok(existing);
     }
 
@@ -157,6 +174,7 @@ public class AttendanceController : ControllerBase
     {
         var entry = await _db.AttendanceEntries.FindAsync(id);
         if (entry == null) return NotFound();
+        await _rules.RevertAsync(id); // give back anything the attendance rules deducted for this day
         _db.AttendanceEntries.Remove(entry); // punches cascade-delete via the FK's ON DELETE CASCADE
         await _db.SaveChangesAsync();
         return NoContent();

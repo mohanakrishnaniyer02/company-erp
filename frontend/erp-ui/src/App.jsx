@@ -9,6 +9,7 @@ import Shifts from './pages/Shifts.jsx'
 import ShiftMapping from './pages/ShiftMapping.jsx'
 import ShiftCalendar from './pages/ShiftCalendar.jsx'
 import Leave from './pages/Leave.jsx'
+import AttendanceRules from './pages/AttendanceRules.jsx'
 import ApprovalsEmployees from './pages/ApprovalsEmployees.jsx'
 import ApprovalsOvertime from './pages/ApprovalsOvertime.jsx'
 import Attendance from './pages/Attendance.jsx'
@@ -32,6 +33,7 @@ export default function App() {
           <Route element={<RequireRole roles={['Admin','SuperAdmin']} />}>
             <Route path="/approvals/employees" element={<ApprovalsEmployees />} />
             <Route path="/approvals/overtime" element={<ApprovalsOvertime />} />
+            <Route path="/attendance-rules" element={<AttendanceRules />} />
           </Route>
 
           <Route element={<RequireRole roles={['HR','Admin','SuperAdmin']} />}>

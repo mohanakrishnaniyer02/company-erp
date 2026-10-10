@@ -51,7 +51,8 @@ public record PunchPairDto(TimeOnly? PunchIn, TimeOnly? PunchOut);
 public record AttendanceUpsertRequest(
     int EmployeeId, DateOnly AttendanceDate, int ShiftId, int AttendanceStatusId, string EntryType,
     List<PunchPairDto> Punches,
-    string? Comments);
+    string? Comments,
+    bool ApplyRules = false);
 
 public record AttendanceCalculationRequest(
     int EmployeeId, int ShiftId, List<PunchPairDto> Punches);
@@ -66,7 +67,20 @@ public record AttendanceListItem(
     decimal AttendanceUnits, string EntryType, int ActualWorkMinutes,
     int RequiredWorkMinutes, int CalculatedOtMinutes, int RoundedOtMinutes, int ApprovedOtMinutes,
     string OtStatus, int CountedWorkMinutes,
-    string? Comments, List<PunchPairDto> Punches);
+    string? Comments, List<PunchPairDto> Punches,
+    int LateInMinutes, int EarlyOutMinutes, bool RulesApplied);
+
+// ---- Attendance rules (Admin / SuperAdmin configure; HR+ apply while marking attendance) ----
+public record RuleTierRequest(
+    int MinMinutes, int OccurrenceNo, string Action, decimal Amount,
+    string? OnLowBalance, string? FallbackAction, decimal? FallbackAmount);
+
+public record RuleSetRequest(
+    string Name, int? OrgDepartmentId, string Watch, string ResetPeriod, bool IsActive,
+    List<RuleTierRequest> Tiers);
+
+public record RulePreviewRequest(
+    int EmployeeId, int ShiftId, DateOnly AttendanceDate, List<PunchPairDto>? Punches, int? ExcludeAttendanceId);
 
 public record AttendanceStatusRequest(string Status, decimal AttendanceUnits, string Meaning, bool IsActive);
 

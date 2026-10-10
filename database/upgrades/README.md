@@ -13,6 +13,7 @@ to keep: it starts by dropping every table.
 | `2026-10-batch1-departments-and-shift-mapping.sql` | Department list, Shift Mapping, removes the shift OT-Allowed / Late After / Early Out columns |
 | `2026-10-batch2-leave.sql` | Leave policy (`leave_types`) and recorded leave (`leave_entries`) for the Leave screen. Run after batch 1 (the app expects both) |
 | `2026-10-batch3-approvals.sql` | Approval requests for employee add/delete, and OT-approval columns on attendance. Existing attendance is carried across as already decided. Run after batches 1 and 2 |
+| `2026-10-batch4-attendance-rules.sql` | Late/early minutes on attendance, the attendance-rule tables, and one example late-in ladder. Run after batches 1-3 |
 
 ## Step by step: bringing an existing database and app up to date
 

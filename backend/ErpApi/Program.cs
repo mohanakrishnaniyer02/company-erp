@@ -45,6 +45,7 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization();
 builder.Services.AddSingleton<IJwtService, JwtService>();
+builder.Services.AddScoped<AttendanceRuleService>();
 
 // ---------- CORS ----------
 var allowedOrigin = builder.Configuration["Cors:AllowedOrigin"] ?? "http://localhost:5173";

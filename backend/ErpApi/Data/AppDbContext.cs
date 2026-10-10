@@ -26,6 +26,10 @@ public class AppDbContext : DbContext
     public DbSet<OtRoundingRule> OtRoundingRules => Set<OtRoundingRule>();
     public DbSet<AttendanceEntry> AttendanceEntries => Set<AttendanceEntry>();
     public DbSet<AttendancePunch> AttendancePunches => Set<AttendancePunch>();
+    public DbSet<AttendanceRuleSet> AttendanceRuleSets => Set<AttendanceRuleSet>();
+    public DbSet<AttendanceRuleTier> AttendanceRuleTiers => Set<AttendanceRuleTier>();
+    public DbSet<AttendanceRuleApplication> AttendanceRuleApplications => Set<AttendanceRuleApplication>();
+    public DbSet<AttendanceRuleCharge> AttendanceRuleCharges => Set<AttendanceRuleCharge>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -302,6 +306,8 @@ public class AppDbContext : DbContext
             e.Property(x => x.ApprovedOtMinutes).HasColumnName("approved_ot_minutes");
             e.Property(x => x.Reason).HasColumnName("reason");
             e.Property(x => x.Comments).HasColumnName("comments");
+            e.Property(x => x.LateInMinutes).HasColumnName("late_in_minutes");
+            e.Property(x => x.EarlyOutMinutes).HasColumnName("early_out_minutes");
             e.Property(x => x.OtStatus).HasColumnName("ot_status");
             e.Property(x => x.CountedWorkMinutes).HasColumnName("counted_work_minutes");
             e.Property(x => x.OtDecidedByEmployeeId).HasColumnName("ot_decided_by_employee_id");
@@ -327,6 +333,69 @@ public class AppDbContext : DbContext
             e.HasIndex(x => new { x.AttendanceId, x.SequenceNo }).IsUnique();
             e.HasOne(x => x.AttendanceEntry).WithMany(x => x.Punches)
                 .HasForeignKey(x => x.AttendanceId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<AttendanceRuleSet>(e =>
+        {
+            e.ToTable("attendance_rule_sets");
+            e.HasKey(x => x.RuleSetId);
+            e.Property(x => x.RuleSetId).HasColumnName("rule_set_id");
+            e.Property(x => x.Name).HasColumnName("name");
+            e.Property(x => x.OrgDepartmentId).HasColumnName("org_department_id");
+            e.Property(x => x.Watch).HasColumnName("watch");
+            e.Property(x => x.ResetPeriod).HasColumnName("reset_period");
+            e.Property(x => x.IsActive).HasColumnName("is_active");
+            e.Property(x => x.CreatedAt).HasColumnName("created_at");
+            e.HasOne(x => x.OrgDepartment).WithMany().HasForeignKey(x => x.OrgDepartmentId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<AttendanceRuleTier>(e =>
+        {
+            e.ToTable("attendance_rule_tiers");
+            e.HasKey(x => x.TierId);
+            e.Property(x => x.TierId).HasColumnName("tier_id");
+            e.Property(x => x.RuleSetId).HasColumnName("rule_set_id");
+            e.Property(x => x.MinMinutes).HasColumnName("min_minutes");
+            e.Property(x => x.OccurrenceNo).HasColumnName("occurrence_no");
+            e.Property(x => x.Action).HasColumnName("action");
+            e.Property(x => x.Amount).HasColumnName("amount").HasPrecision(8, 2);
+            e.Property(x => x.OnLowBalance).HasColumnName("on_low_balance");
+            e.Property(x => x.FallbackAction).HasColumnName("fallback_action");
+            e.Property(x => x.FallbackAmount).HasColumnName("fallback_amount").HasPrecision(8, 2);
+            e.HasOne(x => x.RuleSet).WithMany(x => x.Tiers).HasForeignKey(x => x.RuleSetId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<AttendanceRuleApplication>(e =>
+        {
+            e.ToTable("attendance_rule_applications");
+            e.HasKey(x => x.ApplicationId);
+            e.Property(x => x.ApplicationId).HasColumnName("application_id");
+            e.Property(x => x.AttendanceId).HasColumnName("attendance_id");
+            e.Property(x => x.EmployeeId).HasColumnName("employee_id");
+            e.Property(x => x.AttendanceDate).HasColumnName("attendance_date");
+            e.Property(x => x.RuleSetId).HasColumnName("rule_set_id");
+            e.Property(x => x.RuleSetName).HasColumnName("rule_set_name");
+            e.Property(x => x.TierId).HasColumnName("tier_id");
+            e.Property(x => x.Watch).HasColumnName("watch");
+            e.Property(x => x.VarianceMinutes).HasColumnName("variance_minutes");
+            e.Property(x => x.OccurrenceNo).HasColumnName("occurrence_no");
+            e.Property(x => x.AppliedByEmployeeId).HasColumnName("applied_by_employee_id");
+            e.Property(x => x.AppliedAt).HasColumnName("applied_at");
+            e.HasOne(x => x.AttendanceEntry).WithMany().HasForeignKey(x => x.AttendanceId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<AttendanceRuleCharge>(e =>
+        {
+            e.ToTable("attendance_rule_charges");
+            e.HasKey(x => x.ChargeId);
+            e.Property(x => x.ChargeId).HasColumnName("charge_id");
+            e.Property(x => x.ApplicationId).HasColumnName("application_id");
+            e.Property(x => x.Action).HasColumnName("action");
+            e.Property(x => x.Amount).HasColumnName("amount").HasPrecision(8, 2);
+            e.Property(x => x.LeaveEntryId).HasColumnName("leave_entry_id");
+            e.Property(x => x.Note).HasColumnName("note");
+            e.HasOne(x => x.Application).WithMany(x => x.Charges).HasForeignKey(x => x.ApplicationId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.LeaveEntry).WithMany().HasForeignKey(x => x.LeaveEntryId).OnDelete(DeleteBehavior.SetNull);
         });
     }
 }

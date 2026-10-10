@@ -63,6 +63,7 @@ export default function Attendance() {
   const [editingId,setEditingId] = useState(null)
   const [formEmployeeId,setFormEmployeeId] = useState(''), [formDepartmentFilter,setFormDepartmentFilter] = useState(''), [date,setDate] = useState(today)
   const [shiftSource,setShiftSource] = useState(''), [shiftId,setShiftId] = useState(''), [attendanceStatusId,setAttendanceStatusId] = useState('')
+  const [applyRules,setApplyRules] = useState(false), [ruleTouched,setRuleTouched] = useState(false), [rulePreview,setRulePreview] = useState(null), [rulesWereApplied,setRulesWereApplied] = useState(false)
   const [entryType,setEntryType] = useState('User'), [punches,setPunches] = useState(emptyPunches)
   const [calc,setCalc] = useState({actualWorkMinutes:0,requiredWorkMinutes:0,calculatedOtMinutes:0,roundedOtMinutes:0})
   const [otInfo,setOtInfo] = useState(null)   // when editing: that entry's current OT decision
@@ -107,6 +108,7 @@ export default function Attendance() {
     setEditingId(null); setFormEmployeeId(employeeId||''); setFormDepartmentFilter(departmentFilter||''); setDate(today); setShiftId(''); setShiftSource(''); setEntryType('User')
     const present=statuses.find(x=>x.status==='PRESENT'); setAttendanceStatusId(present?String(present.attendanceStatusId):'')
     setPunches(emptyPunches); setComments(''); setOtInfo(null)
+    setApplyRules(false); setRuleTouched(false); setRulePreview(null); setRulesWereApplied(false)
     setCalc({actualWorkMinutes:0,requiredWorkMinutes:0,calculatedOtMinutes:0,roundedOtMinutes:0})
   }
   function openAdd(){
@@ -124,6 +126,7 @@ export default function Attendance() {
     setPunches(loaded.length ? loaded : emptyPunches)
     setComments(a.comments||'')
     setOtInfo({status:a.otStatus, rounded:a.roundedOtMinutes, approved:a.approvedOtMinutes})
+    setApplyRules(!!a.rulesApplied); setRuleTouched(true); setRulePreview(null); setRulesWereApplied(!!a.rulesApplied)
     setCalc({actualWorkMinutes:a.actualWorkMinutes,requiredWorkMinutes:a.requiredWorkMinutes,calculatedOtMinutes:a.calculatedOtMinutes,roundedOtMinutes:a.roundedOtMinutes})
     setError(''); setSuccess(''); setShowEntryModal(true)
   }
@@ -156,6 +159,20 @@ export default function Attendance() {
     return()=>clearTimeout(timer)
   },[formEmployeeId,shiftId,JSON.stringify(punches),showEntryModal])
 
+  // What ticking "Apply attendance rules" would do. A new entry gets the box ticked automatically
+  // when lateness is detected and a rule matches; HR can untick it to waive.
+  useEffect(()=>{
+    if(!showEntryModal || !formEmployeeId || !shiftId || !date) { setRulePreview(null); return }
+    const timer=setTimeout(async()=>{
+      try{
+        const r=await api.post('/attendance-rules/preview',{employeeId:Number(formEmployeeId),shiftId:Number(shiftId),attendanceDate:date,punches:punchesToPayload(punches),excludeAttendanceId:editingId||null})
+        setRulePreview(r.data)
+        if(!editingId && !ruleTouched) setApplyRules(r.data.evaluations.length>0)
+      }catch{ setRulePreview(null) }
+    },400)
+    return()=>clearTimeout(timer)
+  },[formEmployeeId,shiftId,date,JSON.stringify(punches),showEntryModal,editingId])
+
   function setPunch(index,field,value){ setPunches(rows => rows.map((r,i) => i===index ? {...r,[field]:value} : r)) }
   function addPunchRow(){ setPunches(rows => [...rows, {in:'',out:''}]) }
   function removePunchRow(index){ setPunches(rows => rows.length<=1 ? rows : rows.filter((_,i)=>i!==index)) }
@@ -167,7 +184,7 @@ export default function Attendance() {
       await api.post('/attendance',{
         employeeId:Number(formEmployeeId),attendanceDate:date,shiftId:Number(shiftId),attendanceStatusId:Number(attendanceStatusId),
         entryType,punches:punchesToPayload(punches),
-        comments:comments||null
+        comments:comments||null, applyRules
       })
       setSuccess(`Attendance saved for ${formSelectedEmployee?.fullName}.`)
       setShowEntryModal(false)
@@ -260,8 +277,8 @@ export default function Attendance() {
             <tr key={a.attendanceId}>
               <td className="mono">{a.attendanceDate}</td><td>{weekdayOf(a.attendanceDate)}</td>
               {!employeeId && <td><b>{a.employeeName}</b><div className="meta">{a.empCode}</div></td>}
-              <td><span className={'badge '+(a.attendanceType==='PRESENT'||a.attendanceType==='ON_DUTY'?'active':'inactive')}>{a.attendanceType}</span></td>
-              <td>{firstIn}</td><td>{lastOut}</td><td>{brk>0?formatMinutes(brk):'—'}</td>
+              <td><span className={'badge '+(a.attendanceType==='PRESENT'||a.attendanceType==='ON_DUTY'?'active':'inactive')}>{a.attendanceType}</span>{a.rulesApplied && <div className="meta" title="Attendance rules were applied to this day">⚖ rules applied</div>}</td>
+              <td>{firstIn}{a.lateInMinutes>0 && <div className="meta" style={{color:'#b45309'}} title="Minutes past shift start, after Grace In">late {formatMinutes(a.lateInMinutes)}</div>}</td><td>{lastOut}{a.earlyOutMinutes>0 && <div className="meta" style={{color:'#b45309'}} title="Minutes before shift end, after Grace Out">early {formatMinutes(a.earlyOutMinutes)}</div>}</td><td>{brk>0?formatMinutes(brk):'—'}</td>
               <td>{formatMinutes(a.countedWorkMinutes)}{a.countedWorkMinutes!==a.actualWorkMinutes && <div className="meta" title="Total time punched, before OT approval">punched {formatMinutes(a.actualWorkMinutes)}</div>}</td>
               <td>
                 {a.otStatus==='APPROVED' && <><b>{formatMinutes(a.approvedOtMinutes)}</b> <span className="pill approved">Approved</span></>}
@@ -358,6 +375,27 @@ export default function Attendance() {
                 </div>
               </div>
             </div>
+
+            {rulePreview && (rulePreview.lateInMinutes>0 || rulePreview.earlyOutMinutes>0 || rulesWereApplied) && (
+              <div style={{marginTop:16, border:'1px solid var(--line)', borderRadius:10, padding:'12px 14px'}}>
+                <label style={{display:'flex', alignItems:'center', gap:8, fontWeight:600, cursor:'pointer'}}>
+                  <input type="checkbox" style={{width:'auto'}} checked={applyRules} onChange={e=>{setApplyRules(e.target.checked); setRuleTouched(true)}}/>
+                  Apply attendance rules
+                </label>
+                <div className="meta" style={{fontSize:12.5, lineHeight:1.6, marginTop:6}}>
+                  {rulePreview.lateInMinutes>0 && <div>Late In: {formatMinutes(rulePreview.lateInMinutes)} past shift start (Grace In is {rulePreview.graceInMinutes} min).</div>}
+                  {rulePreview.earlyOutMinutes>0 && <div>Early Out: {formatMinutes(rulePreview.earlyOutMinutes)} before shift end (Grace Out is {rulePreview.graceOutMinutes} min).</div>}
+                  {rulePreview.evaluations.map(ev=>(
+                    <div key={ev.watch} style={{color:'var(--text)', marginTop:4}}>
+                      <b>{ev.watchName}, occurrence {ev.occurrence} in {ev.resetLabel}</b> ({ev.ruleSetName}): {ev.charges.map(c=>c.label).join(' + ')}
+                    </div>
+                  ))}
+                  {rulePreview.evaluations.length===0 && (rulePreview.lateInMinutes>0 || rulePreview.earlyOutMinutes>0) && <div>No rule matches this: there may be no active rule set for this employee's Department, or the time is below its first threshold.</div>}
+                  {rulesWereApplied && <div>{applyRules ? 'Rules were applied to this entry earlier. Saving recalculates them.' : 'Rules were applied to this entry earlier. Saving with this unticked removes those deductions.'}</div>}
+                  {!applyRules && rulePreview.evaluations.length>0 && !rulesWereApplied && <div>Unticked: nothing will be deducted.</div>}
+                </div>
+              </div>
+            )}
 
             <div style={{display:'flex', justifyContent:'flex-end', gap:10, marginTop:20, paddingTop:16, borderTop:'1px solid var(--line)'}}>
               <button type="button" className="btn-ghost" onClick={closeModal}>Cancel</button>

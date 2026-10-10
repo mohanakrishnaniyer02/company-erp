@@ -102,6 +102,31 @@ Only Admin and SuperAdmin can see or use these (enforced in the API, not just th
 - There is no notification back to the person who raised a request — they see the result on the
   Employees list (a deactivation shows "pending" until decided; an added employee appears once approved).
 
+## Attendance rules (late in / early out)
+
+- **Detection** (`AttendanceRules`): measured against the shift that applies on the date. Late In = first
+  complete punch-in minus shift start; Early Out = shift end minus last complete punch-out. Within the shift's
+  Grace In / Grace Out it counts as on time (0); past it, the *full* time counts (not just the part beyond the
+  grace). Night shifts work because clock differences are folded into +/-12h. The two values are stored on every
+  attendance entry (`late_in_minutes`, `early_out_minutes`) whenever it is saved.
+- **Rule sets** (Admin/SuperAdmin page *Attendance Rules*): one ladder per org Department per check (Late In or
+  Early Out); a ladder with no Department is "All Departments" and is used when the employee's Department has no
+  active ladder of its own. Only one active ladder per Department per check.
+- **Steps**: threshold (minutes), occurrence number, action, and what to do when the balance is too low. Actions:
+  Permission (minutes), Casual / Sick / Loss of Pay (days), or a warning. For each occurrence the highest
+  threshold met wins; past the last defined occurrence the last one repeats. Below every threshold nothing is
+  applied and nothing is counted. Low-balance options: use what is left then charge the fallback (default), use
+  only what is left, skip to the fallback, or warn only. If a fallback Casual/Sick balance is also short, the
+  fallback becomes Loss of Pay.
+- **Occurrence** = how many times rules were already applied to that employee for the same check in the current
+  month (or year, per rule set) + 1. It counts applications on other entries regardless of date, so back-dating
+  an entry does not renumber later ones.
+- **Applying**: HR+ ticks *Apply attendance rules* in the attendance modal (pre-ticked on a new entry when a rule
+  matches). Saving replaces whatever was applied to that entry before, so unticking waives it; deleting the entry
+  gives the deductions back. Permission / Casual / Sick deductions are ordinary `leave_entries` (kind TAKEN), so
+  Leave balances stay derived. Loss of Pay and warnings are recorded in `attendance_rule_charges` only;
+  attendance status is not changed automatically.
+
 ## Database
 
 - **New database:** run `database/schema.sql` only.
@@ -112,5 +137,5 @@ Only Admin and SuperAdmin can see or use these (enforced in the API, not just th
 ## API areas
 
 `/api/auth`, `/api/employees`, `/api/departments` (payroll), `/api/org-departments`,
-`/api/approvals` (+ `/summary`, `/employees`, `/overtime`), `/api/shifts`, `/api/shift-mappings` (+ `/resolve`, `/calendar`), `/api/leave` (+ `/types`, `/balances`, `/entries`, `/adjustments`), `/api/attendance`
+`/api/approvals` (+ `/summary`, `/employees`, `/overtime`), `/api/shifts`, `/api/shift-mappings` (+ `/resolve`, `/calendar`), `/api/attendance-rules` (+ `/preview`, `/applied/{id}`), `/api/leave` (+ `/types`, `/balances`, `/entries`, `/adjustments`), `/api/attendance`
 (+ `/statuses`, `/rounding-rules`, `/calculate`), `/api/dashboard/stats`.

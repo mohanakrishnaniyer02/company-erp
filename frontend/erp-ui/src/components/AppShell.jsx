@@ -49,6 +49,11 @@ export default function AppShell() {
             <span className="ic">◐</span><span className="label">Leave</span>
           </NavLink>
         </>}
+        {canApprove && (
+          <NavLink to="/attendance-rules" className={({isActive}) => 'side-link' + (isActive ? ' active' : '')} title="Attendance Rules">
+            <span className="ic">⚖</span><span className="label">Attendance Rules</span>
+          </NavLink>
+        )}
         {canApprove && <>
           <div className="side-group"><span className="label">Approvals</span></div>
           <NavLink to="/approvals/employees" className={({isActive}) => 'side-link' + (isActive ? ' active' : '')} title="Employee Approvals">

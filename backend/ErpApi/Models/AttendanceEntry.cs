@@ -24,6 +24,8 @@ public class AttendanceEntry
     public int CountedWorkMinutes { get; set; }    // min(actual, required) + approved OT — what counts toward pay
     public int? OtDecidedByEmployeeId { get; set; }
     public DateTime? OtDecidedAt { get; set; }
+    public int LateInMinutes { get; set; }         // minutes past shift start once Grace In is exceeded (0 = on time)
+    public int EarlyOutMinutes { get; set; }       // minutes before shift end once Grace Out is exceeded (0 = none)
     public string? Comments { get; set; } // general note for the day, separate from Reason (the OT approver's note)
 
     public int? CreatedByUserId { get; set; } // references employees.employee_id (the person who created this entry)
